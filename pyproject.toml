@@ -1,9 +1,89 @@
 [project]
-name = "v2"
-version = "0.1.0"
-description = "Add your description here"
+name = "mcp-gateway"
+version = "4.0.0"
+description = "A central gateway for aggregating MCP server capabilities via SSE"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "GPL-3.0-only"
+authors = [{ name = "trtyr" }]
 dependencies = [
     "mcp>=1.6.0",
+    "starlette>=0.27.0",
+    "uvicorn[standard]>=0.23.0",
+    "httpx>=0.24.0",
 ]
+
+[project.scripts]
+mcp-gateway = "mcp_gateway.cli:main"
+
+[dependency-groups]
+dev = [
+    "black>=24.4.2",
+    "mypy>=1.17.1",
+    "ruff>=0.14.13",
+    "textual-dev>=1.0.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | \.mypy_cache
+  | \.ruff_cache
+  | logs
+  | img
+  | internal
+  | memory-bank
+  | reports
+  | repos
+)/
+'''
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+    ".venv",
+    ".mypy_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "logs",
+    "img",
+    "internal",
+    "memory-bank",
+    "reports",
+    "repos",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+files = [
+    "mcp_gateway/",
+    "mods/*.py",
+]
+exclude = "(^repos/|^logs/|^img/|^internal/|^memory-bank/|^reports/|^\\.venv/|^__pycache__/)"
+pretty = true
+show_error_codes = true
+warn_unused_configs = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+disable_error_code = ["annotation-unchecked"]
+
+[[tool.mypy.overrides]]
+module = ["mcp_gateway.server.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["mcp_gateway.bridge.client_manager"]
+disable_error_code = ["assignment", "arg-type"]
+
+[[tool.mypy.overrides]]
+module = ["mcp_gateway.bridge.capability_registry"]
+disable_error_code = ["attr-defined"]

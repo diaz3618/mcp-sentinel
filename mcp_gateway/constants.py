@@ -1,0 +1,23 @@
+"""Shared constants for MCP Gateway."""
+
+SERVER_NAME = "MCP_Gateway"
+SERVER_VERSION = "4.0.0"
+AUTHOR = "trtyr"
+
+# Network defaults
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_PORT = 9000
+
+# SSE transport paths
+SSE_PATH = "/sse"
+POST_MESSAGES_PATH = "/messages/"
+
+# Logging defaults
+LOG_DIR = "logs"
+DEFAULT_LOG_FILE = "unknown_gateway.log"
+DEFAULT_LOG_LEVEL = "INFO"
+
+# Backend connection timeouts
+SSE_LOCAL_START_DELAY = 5  # seconds to wait for local SSE server startup
+MCP_INIT_TIMEOUT = 15  # seconds for MCP session initialization
+CAP_FETCH_TIMEOUT = 10.0  # seconds for capability list fetch

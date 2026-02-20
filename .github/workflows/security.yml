@@ -1,0 +1,41 @@
+# Security scan workflow — Semgrep via Docker
+# Runs on pushes to main and on pull requests.
+# Requires SEMGREP_TOKEN to be set in GitHub repository secrets.
+
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Semgrep — static analysis security scanner
+  # ──────────────────────────────────────────────
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+
+    # Skip Dependabot PRs and forks (which don't have access to secrets)
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        env:
+          SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+        run: >-
+          docker run
+          -e SEMGREP_TOKEN=$SEMGREP_TOKEN
+          --rm
+          -v "${PWD}:/src"
+          semgrep/semgrep
+          semgrep ci
