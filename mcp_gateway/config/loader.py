@@ -52,7 +52,9 @@ def _validate_str_dict(data: Any, field_name: str, svr_name: str) -> Dict[str, s
     return validated
 
 
-def _validate_stdio_config(svr_name: str, srv_conf: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_stdio_config(
+    svr_name: str, srv_conf: Dict[str, Any]
+) -> Dict[str, Any]:
     """Validate and build a stdio server configuration entry."""
     cmd = srv_conf.get("command")
     if not isinstance(cmd, str) or not cmd.strip():
@@ -68,15 +70,21 @@ def _validate_stdio_config(svr_name: str, srv_conf: Dict[str, Any]) -> Dict[str,
     if "env" in srv_conf and srv_conf["env"] is not None:
         cmd_env = _validate_str_dict(srv_conf["env"], "env", svr_name)
 
-    stdio_params = StdioServerParameters(command=cmd.strip(), args=cmd_args, env=cmd_env)
+    stdio_params = StdioServerParameters(
+        command=cmd.strip(), args=cmd_args, env=cmd_env
+    )
     return {"type": "stdio", "params": stdio_params}
 
 
-def _validate_sse_config(svr_name: str, srv_conf: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_sse_config(
+    svr_name: str, srv_conf: Dict[str, Any]
+) -> Dict[str, Any]:
     """Validate and build an SSE server configuration entry."""
     sse_url = srv_conf.get("url")
     if not isinstance(sse_url, str) or not sse_url.strip():
-        raise ConfigurationError(f"SSE server '{svr_name}' field 'url' must be a non-empty string.")
+        raise ConfigurationError(
+            f"SSE server '{svr_name}' field 'url' must be a non-empty string."
+        )
 
     sse_url = sse_url.strip()
     if not sse_url.startswith(("http://", "https://")):
@@ -130,7 +138,8 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
             raw_data = json.load(f)
     except json.JSONDecodeError as e_json:
         logger.error(
-            f"Failed to parse JSON configuration file '{cfg_fpath}': {e_json}",
+            "Failed to parse JSON configuration file '%s': %s",
+            cfg_fpath, e_json,
             exc_info=True,
         )
         raise ConfigurationError(
@@ -138,7 +147,8 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         )
     except Exception as e_read:
         logger.error(
-            f"Unexpected error reading configuration file '{cfg_fpath}': {e_read}",
+            "Unexpected error reading configuration file '%s': %s",
+            cfg_fpath, e_read,
             exc_info=True,
         )
         raise ConfigurationError(
@@ -162,8 +172,9 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
     for svr_name_raw, srv_conf_raw in raw_data.items():
         if not isinstance(svr_name_raw, str) or not svr_name_raw.strip():
             logger.warning(
-                f"Invalid server name key in config: '{svr_name_raw}' (will be ignored). "
-                "Name must be a non-empty string."
+                "Invalid server name key in config: '%s' (will be ignored). "
+                "Name must be a non-empty string.",
+                svr_name_raw,
             )
             continue
 
@@ -171,16 +182,18 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
 
         if not isinstance(srv_conf_raw, dict):
             logger.warning(
-                f"Configuration for server '{svr_name}' must be a JSON object; got "
-                f"{type(srv_conf_raw)} (will be ignored)."
+                "Configuration for server '%s' must be a JSON object; got "
+                "%s (will be ignored).",
+                svr_name, type(srv_conf_raw),
             )
             continue
 
         svr_type = srv_conf_raw.get("type")
         if not isinstance(svr_type, str) or svr_type not in type_validators:
             logger.warning(
-                f"Server '{svr_name}' has invalid or missing 'type'. Must be 'stdio' "
-                f"or 'sse', got: {svr_type} (will be ignored)."
+                "Server '%s' has invalid or missing 'type'. Must be 'stdio' "
+                "or 'sse', got: %s (will be ignored).",
+                svr_name, svr_type,
             )
             continue
 
@@ -193,19 +206,20 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         except ConfigurationError as e_svr_cfg:
             logger.error(
                 "Invalid configuration for server '%s', skipped: %s",
-                svr_name,
-                e_svr_cfg,
+                svr_name, e_svr_cfg,
             )
         except Exception as e_svr_unexpected:
             logger.error(
-                f"Unexpected error while processing server '{svr_name}', skipped: "
-                f"{e_svr_unexpected}",
+                "Unexpected error while processing server '%s', skipped: %s",
+                svr_name, e_svr_unexpected,
                 exc_info=True,
             )
 
     if not validated_configs and raw_data:
         logger.error("All server configurations in the file are invalid.")
-        raise ConfigurationError("No valid server configurations were found in the file.")
+        raise ConfigurationError(
+            "No valid server configurations were found in the file."
+        )
     elif not validated_configs:
         logger.info(
             "Configuration file '%s' is empty or contains no server entries.",
@@ -213,7 +227,8 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         )
 
     logger.info(
-        f"Configuration file '{cfg_fpath}' loaded and validated. "
-        f"Processed {len(validated_configs)} valid server configurations."
+        "Configuration file '%s' loaded and validated. "
+        "Processed %s valid server configurations.",
+        cfg_fpath, len(validated_configs),
     )
     return validated_configs

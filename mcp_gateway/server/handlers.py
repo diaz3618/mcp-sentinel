@@ -43,7 +43,9 @@ def register_handlers(mcp_server: McpServer) -> None:
         return prompts
 
     @mcp_server.call_tool()
-    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[mcp_types.TextContent]:
+    async def handle_call_tool(
+        name: str, arguments: Dict[str, Any]
+    ) -> List[mcp_types.TextContent]:
         logger.debug("Handling callTool: name='%s'", name)
         result = await forward_request(
             name, "call_tool", arguments, mcp_server.registry, mcp_server.manager
@@ -51,9 +53,12 @@ def register_handlers(mcp_server: McpServer) -> None:
         if isinstance(result, mcp_types.CallToolResult):
             return result.content
         logger.error(
-            f"call_tool forwarding returned unexpected type: " f"{type(result)} for tool '{name}'"
+            "call_tool forwarding returned unexpected type: "
+            "%s for tool '%s'", type(result), name,
         )
-        raise BackendServerError(f"Backend returned invalid type for tool call '{name}'.")
+        raise BackendServerError(
+            f"Backend returned invalid type for tool call '{name}'."
+        )
 
     @mcp_server.read_resource()
     async def handle_read_resource(name: str) -> mcp_types.ReadResourceResult:
@@ -64,10 +69,12 @@ def register_handlers(mcp_server: McpServer) -> None:
         if isinstance(result, mcp_types.ReadResourceResult):
             return result
         logger.error(
-            f"read_resource forwarding returned unexpected type: "
-            f"{type(result)} for resource '{name}'"
+            "read_resource forwarding returned unexpected type: "
+            "%s for resource '%s'", type(result), name,
         )
-        raise BackendServerError(f"Backend returned invalid type for resource read '{name}'.")
+        raise BackendServerError(
+            f"Backend returned invalid type for resource read '{name}'."
+        )
 
     @mcp_server.get_prompt()
     async def handle_get_prompt(
@@ -80,8 +87,9 @@ def register_handlers(mcp_server: McpServer) -> None:
                 typed_args = {k: str(v) for k, v in arguments.items()}
             except Exception:
                 logger.warning(
-                    f"Could not cast get_prompt arguments to Dict[str, str] "
-                    f"for prompt '{name}'. Will fall back to original arguments.",
+                    "Could not cast get_prompt arguments to Dict[str, str] "
+                    "for prompt '%s'. Will fall back to original arguments.",
+                    name,
                     exc_info=True,
                 )
 
@@ -95,9 +103,11 @@ def register_handlers(mcp_server: McpServer) -> None:
         if isinstance(result, mcp_types.GetPromptResult):
             return result
         logger.error(
-            f"get_prompt forwarding returned unexpected type: "
-            f"{type(result)} for prompt '{name}'"
+            "get_prompt forwarding returned unexpected type: "
+            "%s for prompt '%s'", type(result), name,
         )
-        raise BackendServerError(f"Backend returned invalid type for prompt '{name}'.")
+        raise BackendServerError(
+            f"Backend returned invalid type for prompt '{name}'."
+        )
 
     logger.debug("All MCP protocol handlers registered on server instance.")

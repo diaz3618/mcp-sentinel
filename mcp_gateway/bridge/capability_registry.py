@@ -28,7 +28,9 @@ class CapabilityRegistry:
         session: ClientSession,
         cap_type: str,
         list_method_name: str,
-        mcp_cls: Union[Type[mcp_types.Tool], Type[mcp_types.Resource], Type[mcp_types.Prompt]],
+        mcp_cls: Union[
+            Type[mcp_types.Tool], Type[mcp_types.Resource], Type[mcp_types.Prompt]
+        ],
         agg_list: List[Any],
     ) -> None:
         """
@@ -45,43 +47,39 @@ class CapabilityRegistry:
             list_method = getattr(session, list_method_name)
             logger.debug(
                 "[%s] Requesting %s list (timeout %ss)...",
-                svr_name,
-                cap_type,
-                CAP_FETCH_TIMEOUT,
+                svr_name, cap_type, CAP_FETCH_TIMEOUT,
             )
 
-            list_result = await asyncio.wait_for(list_method(), timeout=CAP_FETCH_TIMEOUT)
+            list_result = await asyncio.wait_for(
+                list_method(), timeout=CAP_FETCH_TIMEOUT
+            )
 
             orig_caps: List[Any] = []
 
-            if hasattr(list_result, cap_type) and isinstance(getattr(list_result, cap_type), list):
+            if hasattr(list_result, cap_type) and isinstance(
+                getattr(list_result, cap_type), list
+            ):
                 orig_caps = getattr(list_result, cap_type)
             elif isinstance(list_result, list):
                 orig_caps = list_result
             elif list_result is None:
                 logger.info(
                     "[%s] %s() returned None, treating as no %s.",
-                    svr_name,
-                    list_method_name,
-                    cap_type,
+                    svr_name, list_method_name, cap_type,
                 )
                 orig_caps = []
             else:
                 logger.warning(
-                    "[%s] %s() returned unknown type %s; " "unable to parse %s list. Raw value: %r",
-                    svr_name,
-                    list_method_name,
-                    type(list_result),
-                    cap_type,
-                    list_result,
+                    "[%s] %s() returned unknown type %s; "
+                    "unable to parse %s list. Raw value: %r",
+                    svr_name, list_method_name, type(list_result),
+                    cap_type, list_result,
                 )
                 orig_caps = []
 
             logger.debug(
                 "[%s] Parsed %s raw %s from response.",
-                svr_name,
-                len(orig_caps),
-                cap_type,
+                svr_name, len(orig_caps), cap_type,
             )
 
             registered_count = 0
@@ -89,9 +87,7 @@ class CapabilityRegistry:
                 if not isinstance(cap_item_raw, mcp_cls):
                     logger.warning(
                         "[%s] Found non-%s object, skipped: %r",
-                        svr_name,
-                        mcp_cls.__name__,
-                        cap_item_raw,
+                        svr_name, mcp_cls.__name__, cap_item_raw,
                     )
                     continue
 
@@ -103,9 +99,7 @@ class CapabilityRegistry:
                 if not cap_item.name:
                     logger.warning(
                         "[%s] Found unnamed %s, skipped: %r",
-                        svr_name,
-                        cap_type[:-1],
-                        cap_item,
+                        svr_name, cap_type[:-1], cap_item,
                     )
                     continue
 
@@ -118,19 +112,15 @@ class CapabilityRegistry:
                             "Conflict: %s '%s' is already registered by "
                             "server '%s'. The duplicate from server '%s' "
                             "will be ignored.",
-                            cap_type[:-1],
-                            exp_cap_name,
-                            exist_svr_name,
-                            svr_name,
+                            cap_type[:-1], exp_cap_name,
+                            exist_svr_name, svr_name,
                         )
                         continue
                     else:
                         logger.warning(
                             "[%s] Duplicate %s provided multiple times: "
                             "'%s'. Only the first instance is registered.",
-                            svr_name,
-                            cap_type[:-1],
-                            exp_cap_name,
+                            svr_name, cap_type[:-1], exp_cap_name,
                         )
                         continue
 
@@ -141,44 +131,38 @@ class CapabilityRegistry:
             if registered_count > 0:
                 logger.info(
                     "[%s] Registered %s unique %s.",
-                    svr_name,
-                    registered_count,
-                    cap_type,
+                    svr_name, registered_count, cap_type,
                 )
             else:
                 logger.info(
                     "[%s] No new %s discovered or registered.",
-                    svr_name,
-                    cap_type,
+                    svr_name, cap_type,
                 )
 
         except asyncio.TimeoutError:
             logger.error(
                 "[%s] %s() timed out (>%ss).",
-                svr_name,
-                list_method_name,
-                CAP_FETCH_TIMEOUT,
+                svr_name, list_method_name, CAP_FETCH_TIMEOUT,
             )
         except mcp_types.Error as mcp_e:
             logger.error(
                 "[%s] MCP error during %s(): Type=%s, Msg='%s'",
-                svr_name,
-                list_method_name,
-                mcp_e.type,
-                mcp_e.message,
+                svr_name, list_method_name, mcp_e.type, mcp_e.message,
                 exc_info=False,
             )
         except Exception:
             logger.exception(
                 "[%s] Unknown error while discovering %s.",
-                svr_name,
-                cap_type,
+                svr_name, cap_type,
             )
 
-    async def discover_and_register(self, sessions: Dict[str, ClientSession]) -> None:
+    async def discover_and_register(
+        self, sessions: Dict[str, ClientSession]
+    ) -> None:
         """Discover and register MCP capabilities from active backend sessions."""
         logger.info(
-            "Starting capability discovery/registration from " "%s active sessions...",
+            "Starting capability discovery/registration from "
+            "%s active sessions...",
             len(sessions),
         )
 
@@ -198,32 +182,20 @@ class CapabilityRegistry:
 
             discover_tasks.append(
                 self._discover_caps_by_type(
-                    svr_name,
-                    session,
-                    "tools",
-                    "list_tools",
-                    mcp_types.Tool,
-                    self._tools,
+                    svr_name, session, "tools", "list_tools",
+                    mcp_types.Tool, self._tools,
                 )
             )
             discover_tasks.append(
                 self._discover_caps_by_type(
-                    svr_name,
-                    session,
-                    "resources",
-                    "list_resources",
-                    mcp_types.Resource,
-                    self._resources,
+                    svr_name, session, "resources", "list_resources",
+                    mcp_types.Resource, self._resources,
                 )
             )
             discover_tasks.append(
                 self._discover_caps_by_type(
-                    svr_name,
-                    session,
-                    "prompts",
-                    "list_prompts",
-                    mcp_types.Prompt,
-                    self._prompts,
+                    svr_name, session, "prompts", "list_prompts",
+                    mcp_types.Prompt, self._prompts,
                 )
             )
 
@@ -237,12 +209,12 @@ class CapabilityRegistry:
                     exc_info=result,
                 )
 
-        logger.info("Capability discovery attempts completed for all backend servers.")
+        logger.info(
+            "Capability discovery attempts completed for all backend servers."
+        )
         logger.info(
             "Aggregated discovery: %s tools, %s resources, %s prompts.",
-            len(self._tools),
-            len(self._resources),
-            len(self._prompts),
+            len(self._tools), len(self._resources), len(self._prompts),
         )
         logger.debug("Current route map: %s", self._route_map)
 
@@ -262,7 +234,9 @@ class CapabilityRegistry:
         """Get the capability-to-server routing map."""
         return self._route_map.copy()
 
-    def resolve_capability(self, exp_cap_name: str) -> Optional[Tuple[str, str]]:
+    def resolve_capability(
+        self, exp_cap_name: str
+    ) -> Optional[Tuple[str, str]]:
         """
         Resolve an exposed capability name to:
         (backend server name, original backend capability name), or None.
