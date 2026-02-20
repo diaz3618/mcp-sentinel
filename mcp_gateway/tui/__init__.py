@@ -1,4 +1,5 @@
 """TUI subpackage - Textual-based terminal user interface."""
 
-# Phase 3: TUI implementation will go here.
-# Currently a placeholder for the package structure.
+from mcp_gateway.tui.app import GatewayApp
+
+__all__ = ["GatewayApp"]

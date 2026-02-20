@@ -97,7 +97,7 @@ Use `uv run python main.py` to start the server. You can specify the `host`, `po
 
 ```bash
 # Listen on all network interfaces on port 9000, set log level to debug
-uv run python .\main.py --host 0.0.0.0 --port 9000 --log-level debug
+uv run python main.py --host 0.0.0.0 --port 9000 --log-level debug
 ```
 
 After startup, you will see console output similar to the image below, including server status, connection info, and loaded tools:

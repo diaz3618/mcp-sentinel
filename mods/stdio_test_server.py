@@ -1,6 +1,6 @@
 import logging
+
 from mcp.server.fastmcp import FastMCP
-from mcp import types as mcp_types
 
 logging.basicConfig(
     level=logging.INFO,

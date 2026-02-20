@@ -1,18 +1,19 @@
 # mods/sse_test_server.py
-import logging
-import uvicorn
 import asyncio
+import logging
 import signal
 from typing import Optional
-from starlette.applications import Starlette
-from starlette.routing import Mount, Route
-from starlette.requests import Request
-from mcp.server.fastmcp import FastMCP
-from mcp.server import Server as McpLowLevelServer
-from mcp.server.sse import SseServerTransport
-from mcp.server.models import InitializationOptions
-from mcp.server.lowlevel import NotificationOptions
+
+import uvicorn
 from mcp import types as mcp_types
+from mcp.server import Server as McpLowLevelServer
+from mcp.server.fastmcp import FastMCP
+from mcp.server.lowlevel import NotificationOptions
+from mcp.server.models import InitializationOptions
+from mcp.server.sse import SseServerTransport
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.routing import Mount, Route
 
 # Configure logging
 logging.basicConfig(

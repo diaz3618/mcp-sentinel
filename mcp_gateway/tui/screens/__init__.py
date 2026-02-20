@@ -1,3 +1,5 @@
-"""TUI screen definitions."""
+"""TUI screen definitions.
 
-# Phase 3: Screen implementations will go here.
+The main dashboard is composed directly in ``GatewayApp.compose()``.
+This subpackage is reserved for future modal / detail screens.
+"""

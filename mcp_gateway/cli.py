@@ -110,37 +110,66 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # TODO: Phase 3 - When TUI is implemented, check args.no_tui
-    # to decide between TUI and console mode.
+    if args.no_tui:
+        # Plain console mode — run Uvicorn directly on the main thread
+        try:
+            asyncio.run(
+                main_async(
+                    host=args.host,
+                    port=args.port,
+                    log_lvl_cli=args.log_level,
+                )
+            )
+        except KeyboardInterrupt:
+            module_logger.info(
+                f"{SERVER_NAME} main program interrupted by KeyboardInterrupt."
+            )
+        except SystemExit as e_sys_exit:
+            if e_sys_exit.code is None or e_sys_exit.code == 0:
+                module_logger.info(
+                    f"{SERVER_NAME} main program exited normally "
+                    f"(code: {e_sys_exit.code})."
+                )
+            else:
+                module_logger.error(
+                    f"{SERVER_NAME} main program exited with SystemExit "
+                    f"(code: {e_sys_exit.code})."
+                )
+        except Exception as e_fatal:
+            module_logger.exception(
+                f"{SERVER_NAME} main program encountered an uncaught fatal "
+                f"error: {e_fatal}"
+            )
+            sys.exit(1)
+        finally:
+            module_logger.info(f"{SERVER_NAME} application finished.")
+    else:
+        # TUI mode (default) — Textual owns the main thread
+        try:
+            from mcp_gateway.tui.app import GatewayApp
 
-    try:
-        asyncio.run(
-            main_async(
+            tui_app = GatewayApp(
                 host=args.host,
                 port=args.port,
-                log_lvl_cli=args.log_level,
+                log_level=args.log_level,
             )
-        )
-    except KeyboardInterrupt:
-        module_logger.info(
-            f"{SERVER_NAME} main program interrupted by KeyboardInterrupt."
-        )
-    except SystemExit as e_sys_exit:
-        if e_sys_exit.code is None or e_sys_exit.code == 0:
+            tui_app.run()
+        except ImportError as e_imp:
+            print(
+                f"Error: Textual is required for TUI mode but could not be "
+                f"imported ({e_imp}). Use --no-tui for plain console output.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except KeyboardInterrupt:
             module_logger.info(
-                f"{SERVER_NAME} main program exited normally "
-                f"(code: {e_sys_exit.code})."
+                f"{SERVER_NAME} TUI interrupted by KeyboardInterrupt."
             )
-        else:
-            module_logger.error(
-                f"{SERVER_NAME} main program exited with SystemExit "
-                f"(code: {e_sys_exit.code})."
+        except Exception as e_fatal:
+            module_logger.exception(
+                f"{SERVER_NAME} TUI encountered an uncaught fatal error: "
+                f"{e_fatal}"
             )
-    except Exception as e_fatal:
-        module_logger.exception(
-            f"{SERVER_NAME} main program encountered an uncaught fatal error: "
-            f"{e_fatal}"
-        )
-        sys.exit(1)
-    finally:
-        module_logger.info(f"{SERVER_NAME} application finished.")
+            sys.exit(1)
+        finally:
+            module_logger.info(f"{SERVER_NAME} application finished.")

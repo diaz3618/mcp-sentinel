@@ -3,7 +3,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from mcp import types as mcp_types
 
@@ -18,6 +18,37 @@ from mcp_gateway.constants import (
 
 logger = logging.getLogger(__name__)
 
+# ── Status callback system ──────────────────────────────────────
+# When a TUI callback is registered, status updates are forwarded
+# to the TUI instead of printing to stdout.
+
+StatusCallback = Callable[[str, Dict[str, Any], bool], None]
+
+_status_callback: Optional[StatusCallback] = None
+_suppress_console: bool = False
+
+
+def set_status_callback(
+    callback: StatusCallback, suppress_console: bool = True
+) -> None:
+    """Register a callback that receives every status update.
+
+    Args:
+        callback: ``(stage, status_info, is_final) -> None``
+        suppress_console: If *True*, ``disp_console_status`` will not
+            print to stdout while the callback is active (TUI mode).
+    """
+    global _status_callback, _suppress_console
+    _status_callback = callback
+    _suppress_console = suppress_console
+
+
+def clear_status_callback() -> None:
+    """Remove the active status callback."""
+    global _status_callback, _suppress_console
+    _status_callback = None
+    _suppress_console = False
+
 
 def gen_status_info(
     app_state: Optional[object],
@@ -28,6 +59,7 @@ def gen_status_info(
     err_msg: Optional[str] = None,
     conn_svrs_num: Optional[int] = None,
     total_svrs_num: Optional[int] = None,
+    route_map: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Generate a structured dictionary of status information."""
     host = getattr(app_state, "host", "N/A") if app_state else "N/A"
@@ -69,13 +101,30 @@ def gen_status_info(
         info["conn_svrs_num"] = conn_svrs_num
     if total_svrs_num is not None:
         info["total_svrs_num"] = total_svrs_num
+    if route_map is not None:
+        info["route_map"] = route_map
     return info
 
 
 def disp_console_status(
     stage: str, status_info: Dict[str, Any], is_final: bool = False
 ) -> None:
-    """Print formatted status information to the console."""
+    """Print formatted status information to the console.
+
+    When a TUI callback is registered via ``set_status_callback``,
+    the update is forwarded there instead of (or in addition to) stdout.
+    """
+    # Forward to registered callback (TUI mode)
+    if _status_callback is not None:
+        try:
+            _status_callback(stage, status_info, is_final)
+        except Exception:
+            pass  # never let callback errors break the server
+
+    # If console output is suppressed (TUI active), skip printing
+    if _suppress_console:
+        return
+
     header = f" MCP Gateway v{SERVER_VERSION} (by {AUTHOR}) "
     sep_char = "="
     line_len = 70

@@ -240,6 +240,7 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             prompts=prompts,
             conn_svrs_num=conn_svrs,
             total_svrs_num=total_svrs,
+            route_map=cap_reg._route_map,
         )
         disp_console_status("✅ Service Ready", status_info_ready)
         log_file_status(status_info_ready)

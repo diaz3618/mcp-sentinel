@@ -11,6 +11,7 @@ dependencies = [
     "starlette>=0.27.0",
     "uvicorn[standard]>=0.23.0",
     "httpx>=0.24.0",
+    "textual>=1.0.0",
 ]
 
 [project.scripts]
@@ -87,3 +88,7 @@ disable_error_code = ["assignment", "arg-type"]
 [[tool.mypy.overrides]]
 module = ["mcp_gateway.bridge.capability_registry"]
 disable_error_code = ["attr-defined"]
+
+[[tool.mypy.overrides]]
+module = ["mcp_gateway.tui.*"]
+ignore_errors = true
