@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 config.json
 .vscode
+.github/copilot-instructions.md
