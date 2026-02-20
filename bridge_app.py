@@ -23,7 +23,7 @@ from errors import BackendServerError
 
 SERVER_NAME = "MCP_Bridge_Server"
 SERVER_VERSION = "3.0.1"
-AUTHOR = "特让他也让"
+AUTHOR = "trtyr"
 SSE_PATH = "/sse"
 POST_MESSAGES_PATH = "/messages/"
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 mcp_server = McpServer(SERVER_NAME)
 mcp_server.manager: Optional[ClientManager] = None
 mcp_server.registry: Optional[CapabilityRegistry] = None
-logger.debug(f"底层 MCP 服务器实例 '{mcp_server.name}' 已创建。")
+logger.debug(f"Underlying MCP server instance '{mcp_server.name}' created.")
 
 
 def _gen_status_info(app_state: Optional[object],
@@ -47,7 +47,6 @@ def _gen_status_info(app_state: Optional[object],
                      conn_svrs_num: Optional[int] = None,
                      total_svrs_num: Optional[int] = None) -> Dict[str, Any]:
     """
-    生成结构化的状态信息字典。
     Generate a structured dictionary of status information.
     """
     host = getattr(app_state, 'host', 'N/A') if app_state else 'N/A'
@@ -97,7 +96,7 @@ def _gen_status_info(app_state: Optional[object],
 def disp_console_status(stage: str,
                         status_info: Dict[str, Any],
                         is_final: bool = False):
-    """在控制台打印美化后的状态信息。"""
+    """Print formatted status information to the console."""
     header = f" MCP Bridge Server v{SERVER_VERSION} (by {AUTHOR}) "
     sep_char = "="
     line_len = 70
@@ -112,41 +111,41 @@ def disp_console_status(stage: str,
             if hasattr(disp_console_status, "header_printed"):
                 delattr(disp_console_status, "header_printed")
 
-    print(f"[{status_info['ts']}] {stage} 状态: {status_info['status_msg']}")
+    print(f"[{status_info['ts']}] {stage} Status: {status_info['status_msg']}")
 
-    if not is_final and stage == "🚀 初始化":
-        print(f"    服务器名称: {SERVER_NAME}")
+    if not is_final and stage == "🚀 Initialization":
+        print(f"    Server Name: {SERVER_NAME}")
         print(f"    SSE URL: {status_info['sse_url']}")
-        print(f"    配置文件: {os.path.basename(status_info['cfg_fpath'])}")
+        print(f"    Config File: {os.path.basename(status_info['cfg_fpath'])}")
         print(
-            f"    日志文件: {status_info['log_fpath']} (级别: {status_info['log_lvl_cfg']})"
+            f"    Log File: {status_info['log_fpath']} (level: {status_info['log_lvl_cfg']})"
         )
 
     if "total_svrs_num" in status_info and "conn_svrs_num" in status_info:
         print(
-            f"    后端服务: {status_info['conn_svrs_num']} / {status_info['total_svrs_num']} 已连接"
+            f"    Backend Services: {status_info['conn_svrs_num']} / {status_info['total_svrs_num']} connected"
         )
 
     if "tools_count" in status_info:
-        print(f"    MCP 工具: {status_info['tools_count']} 个已加载")
+        print(f"    MCP Tools: {status_info['tools_count']} loaded")
     if "resources_count" in status_info:
-        print(f"    MCP 资源: {status_info['resources_count']} 个已加载")
+        print(f"    MCP Resources: {status_info['resources_count']} loaded")
     if "prompts_count" in status_info:
-        print(f"    MCP 提示: {status_info['prompts_count']} 个已加载")
+        print(f"    MCP Prompts: {status_info['prompts_count']} loaded")
 
     if status_info.get("err_msg"):
-        print(f"    !! 错误: {status_info['err_msg']}")
+        print(f"    !! Error: {status_info['err_msg']}")
 
     if not is_final:
         print("-" * line_len)
 
     if is_final:
-        print(f"    日志文件: {status_info['log_fpath']}")
+        print(f"    Log File: {status_info['log_fpath']}")
         print(f"{sep_char * line_len}\n")
 
 
 def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO):
-    """将详细状态信息记录到日志文件。"""
+    """Write detailed status information to the log file."""
     log_lines = [
         f"Server Status Update: {status_info['status_msg']}",
         f"  Author: {AUTHOR}",
@@ -188,36 +187,36 @@ def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO):
 
 
 async def _setup_app_configs(app_state: object) -> Tuple[str, Dict[str, Any]]:
-    """加载并验证配置文件。"""
+    """Load and validate the configuration file."""
     cfg_fpath = getattr(app_state, 'config_file_path', "config.json")
-    logger.info(f"加载配置文件: {cfg_fpath}")
+    logger.info(f"Loading configuration file: {cfg_fpath}")
 
     status_info_load = _gen_status_info(
-        app_state, f"正在加载配置 ({os.path.basename(cfg_fpath)})...")
-    disp_console_status("📄 配置加载", status_info_load)
+        app_state, f"Loading configuration ({os.path.basename(cfg_fpath)})...")
+    disp_console_status("📄 Config Load", status_info_load)
     log_file_status(status_info_load)
 
     config = load_and_validate_config(cfg_fpath)
     total_svrs = len(config)
-    logger.info(f"配置文件加载并验证成功，共 {total_svrs} 个后端配置。")
+    logger.info(f"Configuration loaded and validated successfully; {total_svrs} backend entries.")
 
     status_info_loaded = _gen_status_info(app_state,
-                                          f"配置加载完毕，共 {total_svrs} 个后端服务。",
+                                          f"Configuration load complete; {total_svrs} backend services.",
                                           total_svrs_num=total_svrs)
-    disp_console_status("📄 配置加载", status_info_loaded)
+    disp_console_status("📄 Config Load", status_info_loaded)
     return cfg_fpath, config
 
 
 async def _connect_backends(
         manager: ClientManager, config: Dict[str, Any],
         app_state: object) -> Tuple[int, int, Dict[str, ClientSession]]:
-    """连接所有后端服务器。"""
+    """Connect all backend servers."""
     total_svrs = len(config)
-    status_msg_conn = f"正在连接 {total_svrs} 个后端服务..."
+    status_msg_conn = f"Connecting {total_svrs} backend services..."
     status_info_conn_start = _gen_status_info(app_state,
                                               status_msg_conn,
                                               total_svrs_num=total_svrs)
-    disp_console_status("🔌 后端连接", status_info_conn_start)
+    disp_console_status("🔌 Backend Connection", status_info_conn_start)
     log_file_status(status_info_conn_start)
 
     await manager.start_all(config)
@@ -226,23 +225,27 @@ async def _connect_backends(
 
     log_lvl_conn = logging.INFO
     if conn_svrs == 0 and total_svrs > 0:
-        conn_msg_short = f"❌ 所有后端连接失败 ({conn_svrs}/{total_svrs})"
+        conn_msg_short = f"❌ All backend connections failed ({conn_svrs}/{total_svrs})"
         log_lvl_conn = logging.ERROR
     elif conn_svrs < total_svrs:
-        conn_msg_short = f"⚠️ 部分后端连接失败 ({conn_svrs}/{total_svrs})"
+        conn_msg_short = f"⚠️ Partial backend connection failure ({conn_svrs}/{total_svrs})"
         log_lvl_conn = logging.WARNING
     else:
-        conn_msg_short = f"✅ 所有后端连接成功 ({conn_svrs}/{total_svrs})" if total_svrs > 0 else "✅ (未配置后端服务)"
+        conn_msg_short = (
+            f"✅ All backend connections succeeded ({conn_svrs}/{total_svrs})"
+            if total_svrs > 0 else "✅ (No backend services configured)"
+        )
 
     status_info_conn_done = _gen_status_info(app_state,
                                              conn_msg_short,
                                              conn_svrs_num=conn_svrs,
                                              total_svrs_num=total_svrs)
-    disp_console_status("🔌 后端连接", status_info_conn_done)
+    disp_console_status("🔌 Backend Connection", status_info_conn_done)
     log_file_status(status_info_conn_done, log_lvl=log_lvl_conn)
 
     if conn_svrs == 0 and total_svrs > 0:
-        raise BackendServerError(f"无法连接到任何后端服务器 ({total_svrs} 个已配置)。桥接服务无法启动。")
+        raise BackendServerError(
+            f"Unable to connect to any backend server ({total_svrs} configured). Bridge server cannot start.")
     return conn_svrs, total_svrs, active_sessions
 
 
@@ -251,13 +254,15 @@ async def _discover_capabilities(
     app_state: object, conn_svrs_num: int, total_svrs_num: int
 ) -> Tuple[List[mcp_types.Tool], List[mcp_types.Resource],
            List[mcp_types.Prompt]]:
-    """发现并注册所有后端的能力。"""
-    status_msg_disc = f"正在发现 MCP 能力 ({conn_svrs_num}/{total_svrs_num} 个已连接服务)..."
+    """Discover and register capabilities from all backends."""
+    status_msg_disc = (
+        f"Discovering MCP capabilities ({conn_svrs_num}/{total_svrs_num} services connected)..."
+    )
     status_info_disc_start = _gen_status_info(app_state,
                                               status_msg_disc,
                                               conn_svrs_num=conn_svrs_num,
                                               total_svrs_num=total_svrs_num)
-    disp_console_status("🔍 能力发现", status_info_disc_start)
+    disp_console_status("🔍 Capability Discovery", status_info_disc_start)
     log_file_status(status_info_disc_start)
 
     tools: List[mcp_types.Tool] = []
@@ -270,17 +275,17 @@ async def _discover_capabilities(
         resources = registry.get_aggregated_resources()
         prompts = registry.get_aggregated_prompts()
     else:
-        logger.info("没有活动的后端会话，跳过能力发现。")
+        logger.info("No active backend sessions, skipping capability discovery.")
 
     status_info_disc_done = _gen_status_info(app_state,
-                                             "能力发现与注册完毕。",
+                                             "Capability discovery and registration complete.",
                                              tools=tools,
                                              resources=resources,
                                              prompts=prompts,
                                              conn_svrs_num=conn_svrs_num,
                                              total_svrs_num=total_svrs_num)
 
-    disp_console_status("🔍 能力发现", status_info_disc_done)
+    disp_console_status("🔍 Capability Discovery", status_info_disc_done)
     log_file_status(status_info_disc_done)
     return tools, resources, prompts
 
@@ -288,30 +293,30 @@ async def _discover_capabilities(
 def _init_bridge_components(mcp_svr_instance: McpServer,
                             cli_manager: ClientManager,
                             cap_registry: CapabilityRegistry):
-    """初始化桥接服务器的核心组件。"""
+    """Initialize core bridge server components."""
     mcp_svr_instance.manager = cli_manager
     mcp_svr_instance.registry = cap_registry
-    logger.info("ClientManager 和 CapabilityRegistry 已附加到 mcp_server 实例。")
+    logger.info("ClientManager and CapabilityRegistry attached to mcp_server instance.")
 
 
 @asynccontextmanager
 async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
-    """应用生命周期管理：启动和关闭。"""
+    """Application lifespan management: startup and shutdown."""
     global mcp_server
 
     app_s = app.state
-    logger.info(f"桥接服务器 '{SERVER_NAME}' v{SERVER_VERSION} 启动流程开始...")
-    logger.info(f"作者: {AUTHOR}")
+    logger.info(f"Bridge server '{SERVER_NAME}' v{SERVER_VERSION} startup sequence started...")
+    logger.info(f"Author: {AUTHOR}")
     logger.debug(
-        f"Lifespan 获取到 host='{getattr(app_s, 'host', 'N/A')}', port={getattr(app_s, 'port', 0)}"
+        f"Lifespan received host='{getattr(app_s, 'host', 'N/A')}', port={getattr(app_s, 'port', 0)}"
     )
     logger.info(
-        f"配置文件日志级别: {getattr(app_s, 'file_log_level_configured', DEFAULT_LOG_LVL)}"
+        f"Configured file log level: {getattr(app_s, 'file_log_level_configured', DEFAULT_LOG_LVL)}"
     )
     logger.info(
-        f"实际日志文件: {getattr(app_s, 'actual_log_file', DEFAULT_LOG_FPATH)}")
+        f"Actual log file: {getattr(app_s, 'actual_log_file', DEFAULT_LOG_FPATH)}")
     logger.info(
-        f"将使用的配置文件: {getattr(app_s, 'config_file_path', 'config.json')}")
+        f"Configuration file in use: {getattr(app_s, 'config_file_path', 'config.json')}")
 
     cli_mgr = ClientManager()
     cap_reg = CapabilityRegistry()
@@ -325,8 +330,8 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
     total_svrs: int = 0
 
     try:
-        status_info_init = _gen_status_info(app_s, "桥接服务器正在启动...")
-        disp_console_status("🚀 初始化", status_info_init)
+        status_info_init = _gen_status_info(app_s, "Bridge server is starting...")
+        disp_console_status("🚀 Initialization", status_info_init)
         log_file_status(status_info_init)
 
         _, config_data = await _setup_app_configs(app_s)
@@ -336,73 +341,77 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             cap_reg, active_sess, app_s, conn_svrs, total_svrs)
         _init_bridge_components(mcp_server, cli_mgr, cap_reg)
 
-        logger.info("生命周期启动阶段成功完成。")
+        logger.info("Lifespan startup phase completed successfully.")
         startup_ok = True
 
         status_info_ready = _gen_status_info(app_s,
-                                             "服务器已成功启动并准备就绪！",
+                                             "Server started successfully and is ready.",
                                              tools=tools,
                                              resources=resources,
                                              prompts=prompts,
                                              conn_svrs_num=conn_svrs,
                                              total_svrs_num=total_svrs)
-        disp_console_status("✅ 服务就绪", status_info_ready)
+        disp_console_status("✅ Service Ready", status_info_ready)
         log_file_status(status_info_ready)
         yield
 
     except ConfigurationError as e_cfg:
-        logger.exception(f"配置错误: {e_cfg}")
-        err_detail_msg = f"配置错误: {e_cfg}"
+        logger.exception(f"Configuration error: {e_cfg}")
+        err_detail_msg = f"Configuration error: {e_cfg}"
         status_info_fail = _gen_status_info(app_s,
-                                            "服务器启动失败。",
+                                            "Server startup failed.",
                                             err_msg=err_detail_msg,
                                             total_svrs_num=total_svrs)
-        disp_console_status("❌ 启动失败", status_info_fail)
+        disp_console_status("❌ Startup Failed", status_info_fail)
         log_file_status(status_info_fail, log_lvl=logging.ERROR)
         raise
     except BackendServerError as e_backend:
-        logger.exception(f"后端错误: {e_backend}")
-        err_detail_msg = f"后端错误: {e_backend}"
+        logger.exception(f"Backend error: {e_backend}")
+        err_detail_msg = f"Backend error: {e_backend}"
         status_info_fail = _gen_status_info(app_s,
-                                            "服务器启动失败。",
+                                            "Server startup failed.",
                                             err_msg=err_detail_msg,
                                             conn_svrs_num=conn_svrs,
                                             total_svrs_num=total_svrs)
-        disp_console_status("❌ 启动失败", status_info_fail)
+        disp_console_status("❌ Startup Failed", status_info_fail)
         log_file_status(status_info_fail, log_lvl=logging.ERROR)
         raise
     except Exception as e_exc:
-        logger.exception(f"应用生命周期启动时发生意外错误: {e_exc}")
-        err_detail_msg = f"意外错误: {type(e_exc).__name__} - {e_exc}"
+        logger.exception(f"Unexpected error during lifespan startup: {e_exc}")
+        err_detail_msg = f"Unexpected error: {type(e_exc).__name__} - {e_exc}"
         status_info_fail = _gen_status_info(app_s,
-                                            "服务器启动失败。",
+                                            "Server startup failed.",
                                             err_msg=err_detail_msg,
                                             conn_svrs_num=conn_svrs,
                                             total_svrs_num=total_svrs)
-        disp_console_status("❌ 启动失败", status_info_fail)
+        disp_console_status("❌ Startup Failed", status_info_fail)
         log_file_status(status_info_fail, log_lvl=logging.ERROR)
         raise
     finally:
-        logger.info(f"桥接服务器 '{SERVER_NAME}' 关闭流程开始...")
+        logger.info(f"Bridge server '{SERVER_NAME}' shutdown sequence started...")
         status_info_shutdown = _gen_status_info(app_s,
-                                                "服务器正在关闭...",
+                                                "Server is shutting down...",
                                                 tools=tools,
                                                 resources=resources,
                                                 prompts=prompts,
                                                 conn_svrs_num=conn_svrs,
                                                 total_svrs_num=total_svrs)
-        disp_console_status("🛑 关闭中", status_info_shutdown, is_final=False)
+        disp_console_status("🛑 Shutting Down", status_info_shutdown, is_final=False)
         log_file_status(status_info_shutdown, log_lvl=logging.WARNING)
 
         active_manager = mcp_server.manager if mcp_server.manager else cli_mgr
         if active_manager:
-            logger.info("正在停止所有后端服务器连接...")
+            logger.info("Stopping all backend server connections...")
             await active_manager.stop_all()
-            logger.info("后端连接已停止。")
+            logger.info("Backend connections stopped.")
         else:
-            logger.warning("ClientManager 未初始化或未成功附加，跳过停止步骤。")
+            logger.warning("ClientManager not initialized/attached; skipping stop step.")
 
-        final_msg_short = "服务器正常关闭。" if startup_ok else f"服务器异常退出{(f' - 错误: {err_detail_msg}' if err_detail_msg else '')}"
+        final_msg_short = (
+            "Server shut down normally."
+            if startup_ok else
+            f"Server exited abnormally{(f' - Error: {err_detail_msg}' if err_detail_msg else '')}"
+        )
         final_icon = "✅" if startup_ok else "❌"
         final_log_lvl = logging.INFO if startup_ok else logging.ERROR
 
@@ -410,50 +419,52 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             app_s,
             final_msg_short,
             err_msg=err_detail_msg if not startup_ok else None)
-        disp_console_status(f"{final_icon} 最终状态",
+        disp_console_status(f"{final_icon} Final Status",
                             status_info_final,
                             is_final=True)
         log_file_status(status_info_final, log_lvl=final_log_lvl)
-        logger.info(f"桥接服务器 '{SERVER_NAME}' 关闭流程完成。")
+        logger.info(f"Bridge server '{SERVER_NAME}' shutdown sequence completed.")
 
 
 async def _fwd_req_helper(cap_name_full: str, mcp_method: str,
                           args: Optional[Dict[str, Any]],
                           mcp_svr: McpServer) -> Any:
-    """辅助函数，用于将 MCP 请求转发到正确的后端服务器。"""
-    logger.info(f"开始转发请求: 能力='{cap_name_full}', 方法='{mcp_method}', 参数={args}")
+    """Helper to forward MCP requests to the correct backend server."""
+    logger.info(
+        f"Forwarding request: capability='{cap_name_full}', method='{mcp_method}', args={args}")
 
     registry = mcp_svr.registry
     manager = mcp_svr.manager
 
     if not registry or not manager:
-        logger.error("转发请求时 registry 或 manager 未设置。这是严重的服务器内部错误。")
-        raise BackendServerError("桥接服务器内部错误：核心组件未初始化。")
+        logger.error("registry or manager is unset during forwarding. This is a critical internal error.")
+        raise BackendServerError("Internal bridge server error: core components not initialized.")
 
     route_info = registry.resolve_capability(cap_name_full)
     if not route_info:
-        logger.warning(f"无法解析能力名称 '{cap_name_full}'。MCP客户端应收到错误。")
-        raise ValueError(f"能力 '{cap_name_full}' 不存在。")
+        logger.warning(f"Unable to resolve capability name '{cap_name_full}'. MCP client should receive an error.")
+        raise ValueError(f"Capability '{cap_name_full}' does not exist.")
 
     svr_name, orig_cap_name = route_info
     logger.debug(
-        f"能力 '{cap_name_full}' 解析为服务器 '{svr_name}' 的能力 '{orig_cap_name}'。")
+        f"Capability '{cap_name_full}' resolved to server '{svr_name}' capability '{orig_cap_name}'.")
 
     session = manager.get_session(svr_name)
     if not session:
-        logger.error(f"无法获取服务器 '{svr_name}' 的活动会话以转发 '{cap_name_full}'。")
+        logger.error(f"Unable to get active session for server '{svr_name}' while forwarding '{cap_name_full}'.")
         raise RuntimeError(
-            f"无法连接到提供能力 '{cap_name_full}' 的后端服务器 '{svr_name}'。(会话不存在或已丢失)")
+            f"Unable to connect to backend server '{svr_name}' providing '{cap_name_full}' "
+            "(session missing or lost).")
 
     try:
         target_method_on_session = getattr(session, mcp_method)
     except AttributeError:
-        logger.exception(f"内部编程错误：ClientSession 上不存在方法 '{mcp_method}'。")
-        raise NotImplementedError(f"桥接服务器内部错误：无法找到转发方法 '{mcp_method}'。")
+        logger.exception(f"Internal programming error: method '{mcp_method}' not found on ClientSession.")
+        raise NotImplementedError(f"Internal bridge server error: forward method '{mcp_method}' not found.")
 
     try:
         logger.debug(
-            f"正在调用后端 '{svr_name}' 的方法 '{mcp_method}' (原始能力: '{orig_cap_name}')"
+            f"Calling backend '{svr_name}' method '{mcp_method}' (original capability: '{orig_cap_name}')"
         )
         result: Any
         if mcp_method == "call_tool":
@@ -468,82 +479,86 @@ async def _fwd_req_helper(cap_name_full: str, mcp_method: str,
             result = await target_method_on_session(name=orig_cap_name,
                                                     arguments=args)
         else:
-            logger.error(f"内部编程错误：未知的转发方法名称 '{mcp_method}'。")
-            raise NotImplementedError(f"桥接服务器内部错误：无法处理此请求类型 '{mcp_method}'。")
+            logger.error(f"Internal programming error: unknown forwarding method '{mcp_method}'.")
+            raise NotImplementedError(
+                f"Internal bridge server error: cannot handle request type '{mcp_method}'.")
 
         logger.info(
-            f"成功从后端 '{svr_name}' 收到 '{mcp_method}' 的结果 (能力: '{cap_name_full}')。"
+            f"Received backend result from '{svr_name}' for '{mcp_method}' (capability: '{cap_name_full}')."
         )
         return result
     except asyncio.TimeoutError:
         logger.error(
-            f"与后端 '{svr_name}' 通信超时 (能力: '{cap_name_full}', 方法: '{mcp_method}')。"
+            f"Timeout communicating with backend '{svr_name}' (capability: '{cap_name_full}', method: '{mcp_method}')."
         )
         raise
     except (ConnectionError, BrokenPipeError) as conn_e:
         logger.error(
-            f"与后端 '{svr_name}' 连接丢失 (能力: '{cap_name_full}', 方法: '{mcp_method}'): {type(conn_e).__name__}"
+            f"Connection lost to backend '{svr_name}' (capability: '{cap_name_full}', method: '{mcp_method}'): "
+            f"{type(conn_e).__name__}"
         )
         raise
     except BackendServerError:
-        logger.warning(f"后端 '{svr_name}' 报告了一个服务器错误在处理 '{cap_name_full}' 时。")
+        logger.warning(f"Backend '{svr_name}' reported a server error while handling '{cap_name_full}'.")
         raise
     except Exception as e_fwd:
         logger.exception(
-            f"转发请求给后端 '{svr_name}' 时发生意外错误 (能力: '{cap_name_full}', 方法: '{mcp_method}')"
+            f"Unexpected error forwarding request to backend '{svr_name}' "
+            f"(capability: '{cap_name_full}', method: '{mcp_method}')"
         )
         raise BackendServerError(
-            f"处理来自 '{svr_name}' 的请求 '{cap_name_full}' 时发生意外后端错误: {type(e_fwd).__name__}"
+            f"Unexpected backend error while handling request '{cap_name_full}' "
+            f"from '{svr_name}': {type(e_fwd).__name__}"
         ) from e_fwd
 
 
 @mcp_server.list_tools()
 async def handle_list_tools() -> List[mcp_types.Tool]:
-    logger.debug("处理 listTools 请求...")
-    if not mcp_server.registry: raise BackendServerError("Registry 未初始化")
+    logger.debug("Handling listTools request...")
+    if not mcp_server.registry: raise BackendServerError("Registry is not initialized")
     tools = mcp_server.registry.get_aggregated_tools()
-    logger.info(f"返回 {len(tools)} 个聚合工具")
+    logger.info(f"Returning {len(tools)} aggregated tools")
     return tools
 
 
 @mcp_server.list_resources()
 async def handle_list_resources() -> List[mcp_types.Resource]:
-    logger.debug("处理 listResources 请求...")
-    if not mcp_server.registry: raise BackendServerError("Registry 未初始化")
+    logger.debug("Handling listResources request...")
+    if not mcp_server.registry: raise BackendServerError("Registry is not initialized")
     resources = mcp_server.registry.get_aggregated_resources()
-    logger.info(f"返回 {len(resources)} 个聚合资源")
+    logger.info(f"Returning {len(resources)} aggregated resources")
     return resources
 
 
 @mcp_server.list_prompts()
 async def handle_list_prompts() -> List[mcp_types.Prompt]:
-    logger.debug("处理 listPrompts 请求...")
-    if not mcp_server.registry: raise BackendServerError("Registry 未初始化")
+    logger.debug("Handling listPrompts request...")
+    if not mcp_server.registry: raise BackendServerError("Registry is not initialized")
     prompts = mcp_server.registry.get_aggregated_prompts()
-    logger.info(f"返回 {len(prompts)} 个聚合提示")
+    logger.info(f"Returning {len(prompts)} aggregated prompts")
     return prompts
 
 
 @mcp_server.call_tool()
 async def handle_call_tool(
         name: str, arguments: Dict[str, Any]) -> List[mcp_types.TextContent]:
-    logger.debug(f"处理 callTool: name='{name}'")
+    logger.debug(f"Handling callTool: name='{name}'")
     result = await _fwd_req_helper(name, "call_tool", arguments, mcp_server)
     if isinstance(result, mcp_types.CallToolResult):
         return result.content
-    logger.error(f"call_tool 转发返回了非预期的类型: {type(result)} for tool '{name}'")
-    raise BackendServerError(f"调用工具 '{name}' 后端返回类型错误。")
+    logger.error(f"call_tool forwarding returned unexpected type: {type(result)} for tool '{name}'")
+    raise BackendServerError(f"Backend returned invalid type for tool call '{name}'.")
 
 
 @mcp_server.read_resource()
 async def handle_read_resource(name: str) -> mcp_types.ReadResourceResult:
-    logger.debug(f"处理 readResource: name='{name}'")
+    logger.debug(f"Handling readResource: name='{name}'")
     result = await _fwd_req_helper(name, "read_resource", None, mcp_server)
     if isinstance(result, mcp_types.ReadResourceResult):
         return result
     logger.error(
-        f"read_resource 转发返回了非预期的类型: {type(result)} for resource '{name}'")
-    raise BackendServerError(f"读取资源 '{name}' 后端返回类型错误。")
+        f"read_resource forwarding returned unexpected type: {type(result)} for resource '{name}'")
+    raise BackendServerError(f"Backend returned invalid type for resource read '{name}'.")
 
 
 @mcp_server.get_prompt()
@@ -551,14 +566,15 @@ async def handle_get_prompt(
         name: str,
         arguments: Optional[Dict[str,
                                  Any]] = None) -> mcp_types.GetPromptResult:
-    logger.debug(f"处理 getPrompt: name='{name}'")
+    logger.debug(f"Handling getPrompt: name='{name}'")
     typed_args: Optional[Dict[str, str]] = None
     if arguments is not None:
         try:
             typed_args = {k: str(v) for k, v in arguments.items()}
         except Exception:
             logger.warning(
-                f"无法将 get_prompt 的参数转换为 Dict[str, str] for prompt '{name}'. 将尝试使用原始参数。",
+                f"Could not cast get_prompt arguments to Dict[str, str] for prompt '{name}'. "
+                "Will fall back to original arguments.",
                 exc_info=True)
             pass
 
@@ -566,20 +582,20 @@ async def handle_get_prompt(
                                    mcp_server)
     if isinstance(result, mcp_types.GetPromptResult):
         return result
-    logger.error(f"get_prompt 转发返回了非预期的类型: {type(result)} for prompt '{name}'")
-    raise BackendServerError(f"获取提示 '{name}' 后端返回类型错误。")
+    logger.error(f"get_prompt forwarding returned unexpected type: {type(result)} for prompt '{name}'")
+    raise BackendServerError(f"Backend returned invalid type for prompt '{name}'.")
 
 
 sse_transport = SseServerTransport(POST_MESSAGES_PATH)
 
 
 async def handle_sse(request: Request) -> None:
-    """处理传入的 SSE 连接请求。"""
-    logger.debug(f"接收到新的 SSE 连接请求 (GET): {request.url}")
+    """Handle incoming SSE connection requests."""
+    logger.debug(f"Received new SSE connection request (GET): {request.url}")
     global mcp_server
     if not mcp_server.manager or not mcp_server.registry:
         logger.error(
-            "在 handle_sse 中发现 manager 或 registry 未设置。关键组件缺失，无法处理SSE连接。")
+            "manager or registry is unset in handle_sse. Missing critical components; cannot handle SSE connection.")
         return
 
     async with sse_transport.connect_sse(
@@ -594,11 +610,11 @@ async def handle_sse(request: Request) -> None:
                                                        {})
             else:
                 logger.warning(
-                    "mcp_server.registry 未设置，在SSE初始化时将使用空的 capabilities。")
-            logger.debug(f"为SSE连接获取到的服务器Capabilities: {srv_caps}")
+                    "mcp_server.registry is unset; SSE initialization will use empty capabilities.")
+            logger.debug(f"Server capabilities for SSE connection: {srv_caps}")
         except Exception as e_caps:
             logger.exception(
-                f"为SSE连接获取 mcp_server.get_capabilities 时出错: {e_caps}")
+                f"Error getting mcp_server.get_capabilities for SSE connection: {e_caps}")
             srv_caps = {}
 
         init_opts = InitializationOptions(
@@ -607,10 +623,10 @@ async def handle_sse(request: Request) -> None:
             capabilities=srv_caps,
         )
         logger.debug(
-            f"准备运行 mcp_server.run (MCP主循环) for SSE connection with options: {init_opts}"
+            f"Running mcp_server.run (MCP main loop) for SSE connection with options: {init_opts}"
         )
         await mcp_server.run(read_stream, write_stream, init_opts)
-    logger.debug(f"SSE 连接已关闭: {request.url}")
+    logger.debug(f"SSE connection closed: {request.url}")
 
 
 app: Starlette = Starlette(lifespan=app_lifespan,
@@ -620,5 +636,5 @@ app: Starlette = Starlette(lifespan=app_lifespan,
                                      app=sse_transport.handle_post_message),
                            ])
 logger.info(
-    f"Starlette ASGI 应用 '{SERVER_NAME}' 已创建。SSE GET on {SSE_PATH}, POST on {POST_MESSAGES_PATH}"
+    f"Starlette ASGI app '{SERVER_NAME}' created. SSE GET on {SSE_PATH}, POST on {POST_MESSAGES_PATH}"
 )

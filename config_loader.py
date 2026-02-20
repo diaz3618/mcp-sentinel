@@ -11,70 +11,74 @@ logger = logging.getLogger(__name__)
 
 
 def _valid_str_list(data: Any, field_name: str, svr_name: str) -> List[str]:
-    """辅助函数，验证数据是否为字符串列表。"""
+    """Helper: validate that the input is a list of strings."""
     if not isinstance(data, list):
         raise ConfigurationError(
-            f"服务器 '{svr_name}' 的 '{field_name}' 必须是一个字符串列表。")
+            f"Server '{svr_name}' field '{field_name}' must be a list of strings.")
 
     val_list: List[str] = []
     for i, item in enumerate(data):
         if not isinstance(item, str):
             raise ConfigurationError(
-                f"服务器 '{svr_name}' 的 '{field_name}' 列表的第 {i+1} 个元素必须是字符串。")
+                f"Server '{svr_name}' field '{field_name}' item #{i+1} must be a string.")
         val_list.append(item)
     return val_list
 
 
 def _valid_str_dict(data: Any, field_name: str,
                     svr_name: str) -> Dict[str, str]:
-    """辅助函数，验证数据是否为字符串到字符串的字典。"""
+    """Helper: validate that the input is a dict[str, str]."""
     if not isinstance(data, dict):
         raise ConfigurationError(
-            f"服务器 '{svr_name}' 的 '{field_name}' 必须是一个 JSON 对象 (键值均为字符串的字典)。")
+            f"Server '{svr_name}' field '{field_name}' must be a JSON object "
+            "(dictionary with string keys and values).")
 
     val_dict: Dict[str, str] = {}
     for key, value in data.items():
         if not isinstance(key, str):
             raise ConfigurationError(
-                f"服务器 '{svr_name}' 的 '{field_name}' 字典的键必须是字符串。")
+                f"Server '{svr_name}' field '{field_name}' must have string keys.")
         if not isinstance(value, str):
             raise ConfigurationError(
-                f"服务器 '{svr_name}' 的 '{field_name}' 字典的值 (键: '{key}') 必须是字符串。")
+                f"Server '{svr_name}' field '{field_name}' value for key "
+                f"'{key}' must be a string.")
         val_dict[key] = value
     return val_dict
 
 
 def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
     """
-    加载并验证 JSON 配置文件。
-    返回一个字典，其中键是服务器名称，值是经过验证和处理的服务器配置。
+    Load and validate a JSON configuration file.
+    Returns a dictionary where keys are server names and values are
+    validated/processed server configs.
     """
-    logger.debug(f"开始加载配置文件: {cfg_fpath}")
+    logger.debug(f"Loading configuration file: {cfg_fpath}")
     if not os.path.exists(cfg_fpath):
-        logger.error(f"配置文件未找到: {cfg_fpath}")
-        raise ConfigurationError(f"配置文件不存在: {cfg_fpath}")
+        logger.error(f"Configuration file not found: {cfg_fpath}")
+        raise ConfigurationError(f"Configuration file does not exist: {cfg_fpath}")
 
     try:
         with open(cfg_fpath, 'r', encoding='utf-8') as f:
             raw_data = json.load(f)
     except json.JSONDecodeError as e_json:
-        logger.error(f"无法解析 JSON 配置文件 '{cfg_fpath}': {e_json}", exc_info=True)
-        raise ConfigurationError(f"无法解析 JSON 配置文件: {cfg_fpath}, 错误: {e_json}")
+        logger.error(f"Failed to parse JSON configuration file '{cfg_fpath}': {e_json}", exc_info=True)
+        raise ConfigurationError(f"Unable to parse JSON configuration file: {cfg_fpath}, error: {e_json}")
     except Exception as e_read:
-        logger.error(f"读取配置文件 '{cfg_fpath}' 时发生意外错误: {e_read}", exc_info=True)
-        raise ConfigurationError(f"读取配置文件时发生意外错误: {cfg_fpath}, 错误: {e_read}")
+        logger.error(f"Unexpected error reading configuration file '{cfg_fpath}': {e_read}", exc_info=True)
+        raise ConfigurationError(f"Unexpected error reading configuration file: {cfg_fpath}, error: {e_read}")
 
     if not isinstance(raw_data, dict):
-        logger.error("配置文件顶层必须是一个 JSON 对象 (字典)。")
-        raise ConfigurationError("配置文件顶层必须是一个 JSON 对象 (字典)。")
+        logger.error("Top-level configuration content must be a JSON object (dictionary).")
+        raise ConfigurationError("Top-level configuration content must be a JSON object (dictionary).")
 
     validated_configs: Dict[str, Dict[str, Any]] = {}
-    logger.debug(f"找到 {len(raw_data)} 个服务器配置条目进行验证。")
+    logger.debug(f"Found {len(raw_data)} server configuration entries to validate.")
 
     for svr_name_raw, srv_conf_raw in raw_data.items():
         if not isinstance(svr_name_raw, str) or not svr_name_raw.strip():
             logger.warning(
-                f"配置中发现无效的服务器名称键: '{svr_name_raw}' (将被忽略)。名称必须是非空字符串。")
+                f"Invalid server name key in config: '{svr_name_raw}' (will be ignored). "
+                "Name must be a non-empty string.")
 
             continue
 
@@ -82,7 +86,8 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
 
         if not isinstance(srv_conf_raw, dict):
             logger.warning(
-                f"服务器 '{svr_name}' 的配置必须是一个 JSON 对象，实际类型: {type(srv_conf_raw)} (将被忽略)。"
+                f"Configuration for server '{svr_name}' must be a JSON object; got "
+                f"{type(srv_conf_raw)} (will be ignored)."
             )
             continue
 
@@ -91,11 +96,12 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         svr_type = srv_conf.get("type")
         if not isinstance(svr_type, str) or svr_type not in ["stdio", "sse"]:
             logger.warning(
-                f"服务器 '{svr_name}' 的 'type' 字段无效或缺失。必须是 'stdio' 或 'sse'，得到: {svr_type} (将被忽略)。"
+                f"Server '{svr_name}' has invalid or missing 'type'. Must be 'stdio' "
+                f"or 'sse', got: {svr_type} (will be ignored)."
             )
             continue
 
-        logger.debug(f"正在验证服务器 '{svr_name}' (类型: {svr_type})")
+        logger.debug(f"Validating server '{svr_name}' (type: {svr_type})")
         val_cfg_entry: Dict[str, Any] = {"type": svr_type}
 
         try:
@@ -103,7 +109,7 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
                 cmd = srv_conf.get("command")
                 if not isinstance(cmd, str) or not cmd.strip():
                     raise ConfigurationError(
-                        f"Stdio 服务器 '{svr_name}' 的 'command' 必须是一个非空字符串。")
+                        f"Stdio server '{svr_name}' field 'command' must be a non-empty string.")
 
                 cmd_args: List[str] = []
                 if "args" in srv_conf:
@@ -123,12 +129,13 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
                 sse_url = srv_conf.get("url")
                 if not isinstance(sse_url, str) or not sse_url.strip():
                     raise ConfigurationError(
-                        f"SSE 服务器 '{svr_name}' 的 'url' 必须是一个非空字符串。")
+                        f"SSE server '{svr_name}' field 'url' must be a non-empty string.")
 
                 sse_url = sse_url.strip()
                 if not sse_url.startswith(("http://", "https://")):
                     raise ConfigurationError(
-                        f"SSE 服务器 '{svr_name}' 的 'url' ('{sse_url}') 看起来不是一个有效的 HTTP/HTTPS URL。"
+                        f"SSE server '{svr_name}' field 'url' ('{sse_url}') does not look like "
+                        "a valid HTTP/HTTPS URL."
                     )
                 val_cfg_entry["url"] = sse_url
 
@@ -136,7 +143,8 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
                     sse_cmd = srv_conf.get("command")
                     if not isinstance(sse_cmd, str) or not sse_cmd.strip():
                         raise ConfigurationError(
-                            f"SSE 服务器 '{svr_name}' 的 'command' (用于本地启动) 必须是一个非空字符串。"
+                            f"SSE server '{svr_name}' field 'command' (for local startup) "
+                            "must be a non-empty string."
                         )
                     val_cfg_entry['command'] = sse_cmd.strip()
 
@@ -153,22 +161,24 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
                     val_cfg_entry['env'] = sse_cmd_env
 
             validated_configs[svr_name] = val_cfg_entry
-            logger.debug(f"服务器 '{svr_name}' 配置验证通过。")
+            logger.debug(f"Server '{svr_name}' configuration validated successfully.")
 
         except ConfigurationError as e_svr_cfg:
-            logger.error(f"服务器 '{svr_name}' 配置无效，已跳过: {e_svr_cfg}")
+            logger.error(f"Invalid configuration for server '{svr_name}', skipped: {e_svr_cfg}")
 
         except Exception as e_svr_unexpected:
             logger.error(
-                f"处理服务器 '{svr_name}' 配置时发生意外错误，已跳过: {e_svr_unexpected}",
+                f"Unexpected error while processing server '{svr_name}', skipped: "
+                f"{e_svr_unexpected}",
                 exc_info=True)
 
     if not validated_configs and raw_data:
-        logger.error("配置文件中所有服务器配置均无效。")
-        raise ConfigurationError("配置文件中没有有效的服务器配置。")
+        logger.error("All server configurations in the file are invalid.")
+        raise ConfigurationError("No valid server configurations were found in the file.")
     elif not validated_configs:
-        logger.info(f"配置文件 '{cfg_fpath}' 为空或不包含任何服务器配置。")
+        logger.info(f"Configuration file '{cfg_fpath}' is empty or contains no server entries.")
 
     logger.info(
-        f"配置文件 '{cfg_fpath}' 加载和验证完成。共处理 {len(validated_configs)} 个有效的服务器配置。")
+        f"Configuration file '{cfg_fpath}' loaded and validated. "
+        f"Processed {len(validated_configs)} valid server configurations.")
     return validated_configs

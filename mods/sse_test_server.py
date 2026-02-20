@@ -3,7 +3,7 @@ import logging
 import uvicorn
 import asyncio
 import signal
-from typing import Optional  # <--- 新增导入
+from typing import Optional
 from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.requests import Request
@@ -14,13 +14,13 @@ from mcp.server.models import InitializationOptions
 from mcp.server.lowlevel import NotificationOptions
 from mcp import types as mcp_types
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='[SseTestServer] %(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 创建一个名为 "SseTest" 的 FastMCP 服务器实例
+# Create a FastMCP server instance named "SseTest"
 mcp = FastMCP("SseTest")
 logger.info("SseTest MCP Server (FastMCP) instance created.")
 
@@ -33,15 +33,14 @@ SSE_POST_MESSAGES_PATH = "/mcp_messages/"
 @mcp.tool()
 async def echo_sse(message: str, repeat: int = 1) -> str:
     """
-    一个简单的 SSE 测试工具，它会回显接收到的消息，并可选择重复多次。
     A simple SSE test tool that echoes back the received message, optionally repeated.
 
     Parameters:
-    message (str): 要回显的消息。The message to echo.
-    repeat (int): 消息重复的次数，默认为1。Number of times to repeat the message, defaults to 1.
+    message (str): The message to echo.
+    repeat (int): Number of times to repeat the message, defaults to 1.
 
     Returns:
-    str: 前缀为 "SSE Echo: " 的原始消息（可能重复）。The original message (possibly repeated) prefixed with "SSE Echo: ".
+    str: The original message (possibly repeated) prefixed with "SSE Echo: ".
     """
     logger.info(
         f"Tool 'echo_sse' called with message: '{message}', repeat: {repeat}")
@@ -54,14 +53,13 @@ async def echo_sse(message: str, repeat: int = 1) -> str:
 @mcp.prompt()
 def sse_example_prompt(user_name: str) -> list[mcp_types.PromptMessage]:
     """
-    一个简单的 SSE 测试提示。
     A simple SSE test prompt.
 
     Parameters:
-    user_name (str): 用户的名字。The user's name.
+    user_name (str): The user's name.
 
     Returns:
-    list[mcp_types.PromptMessage]: 一个包含用户和助手消息的列表。A list of user and assistant messages.
+    list[mcp_types.PromptMessage]: A list of user and assistant messages.
     """
     logger.info(
         f"Prompt 'sse_example_prompt' called with user_name: '{user_name}'")
@@ -90,7 +88,7 @@ logger.info(
 
 
 async def handle_sse_connection(request: Request) -> None:
-    """处理传入的 SSE 连接请求 (GET 请求)"""
+    """Handle incoming SSE connection requests (GET requests)."""
     logger.info(
         f"New SSE connection request from {request.client.host}:{request.client.port} to {request.url.path}"
     )

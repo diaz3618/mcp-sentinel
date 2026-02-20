@@ -1,7 +1,5 @@
 # MCP Gateway
 
-English | [简体中文](README_zh.md)
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for more details.
@@ -12,8 +10,8 @@ MCP Gateway is an application built with Python. It acts as a **central gateway*
 
 **Core Advantages:**
 
-1.  **Simplified Client Configuration:** MCP clients only need to connect to the single address of the MCP Gateway to access the functionalities of all backend services, eliminating the need to configure each backend server individually.
-2.  **Capability Aggregation & Orchestration:** Aggregates MCP tools with diverse capabilities from various sources, providing a foundation for building more powerful, customized agents focused on specific task domains.
+1. **Simplified Client Configuration:** MCP clients only need to connect to the single address of the MCP Gateway to access the functionalities of all backend services, eliminating the need to configure each backend server individually.
+2. **Capability Aggregation & Orchestration:** Aggregates MCP tools with diverse capabilities from various sources, providing a foundation for building more powerful, customized agents focused on specific task domains.
 
 ## Project File Structure
 
@@ -34,14 +32,14 @@ MCP Gateway is an application built with Python. It acts as a **central gateway*
 
 This project is written in Python. Using `uv` for environment and dependency management is recommended.
 
-1.  **Clone Repository**
+1. **Clone Repository**
 
     ```bash
     git clone https://github.com/trtyr/MCP-Gateway.git
     cd MCP-Gateway
     ```
 
-2.  **Create and Activate Virtual Environment**
+2. **Create and Activate Virtual Environment**
 
     ```bash
     # Create virtual environment
@@ -54,7 +52,8 @@ This project is written in Python. Using `uv` for environment and dependency man
     .venv\Scripts\activate
     ```
 
-3.  **Install Dependencies**
+3. **Install Dependencies**
+
     ```bash
     # Install all required dependencies based on pyproject.toml
     uv sync
@@ -92,7 +91,7 @@ options:
 
 ### Start the Project
 
-**Note: the new version has been removed Rich embellishment, the real effect to the actual project run results shall prevail*.
+**Note:** The latest version removed Rich-based console styling. Actual runtime output may differ from the screenshots.
 
 Use `uv run python main.py` to start the server. You can specify the `host`, `port`, and `log-level`:
 
@@ -101,13 +100,13 @@ Use `uv run python main.py` to start the server. You can specify the `host`, `po
 uv run python .\main.py --host 0.0.0.0 --port 9000 --log-level debug
 ```
 
-After starting, you will see a Rich beautified console output similar to the image below, showing the server status, connection information, and loaded tools:
+After startup, you will see console output similar to the image below, including server status, connection info, and loaded tools:
 
 ![](./img/1.png)
 
 ### MCP Client Connection
 
-**Note: the new version has been removed Rich embellishment, the real effect to the actual project run results shall prevail*.
+**Note:** The latest version removed Rich-based console styling. Actual runtime output may differ from the screenshots.
 
 After starting MCP Gateway, you can use any MCP-compatible client (such as Cline, Cursor, Claude Desktop, or a custom client) to connect to the SSE endpoint provided by the Gateway.
 
@@ -115,9 +114,9 @@ The default address is `http://<Server_IP_Address>:9000/sse` (if using the defau
 
 **Example (Using ChatWise Connect):**
 
-1.  Select `SSE` connection type.
-2.  Enter the Gateway's SSE URL (e.g., `http://127.0.0.1:9000/sse`).
-3.  Click `Connect`.
+1. Select `SSE` connection type.
+2. Enter the Gateway's SSE URL (e.g., `http://127.0.0.1:9000/sse`).
+3. Click `Connect`.
 
 ![](./img/2.png)
 
@@ -232,9 +231,9 @@ Here are examples of how to add third-party MCP servers to `config.json`.
 
 Suppose you want to integrate Playwright's MCP server (`@playwright/mcp`).
 
-1.  **Understand Startup Method**: Playwright MCP is typically started using `npx @playwright/mcp@latest`. This is a Node.js package executed via `npx`.
+1. **Understand Startup Method**: Playwright MCP is typically started using `npx @playwright/mcp@latest`. This is a Node.js package executed via `npx`.
 
-2.  **Configure `config.json`**:
+2. **Configure `config.json`**:
 
     ```json
     {
@@ -250,7 +249,7 @@ Suppose you want to integrate Playwright's MCP server (`@playwright/mcp`).
 
     Here, `command` is `npx`, and `args` contains the Playwright MCP package name and version.
 
-3.  **Restart Gateway**: Save `config.json` and restart MCP Gateway.
+3. **Restart Gateway**: Save `config.json` and restart MCP Gateway.
 
 After starting, you should see tools named `playwright/...` (e.g., `playwright/browse`) in the console logs and your client.
 
@@ -264,9 +263,9 @@ After starting, you should see tools named `playwright/...` (e.g., `playwright/b
 
 Suppose you want to integrate ENScan_GO, a Go program that can be started with `./enscan --mcp` and provides an SSE service at `http://localhost:8080`.
 
-1.  **Get Executable File**: Download the ENScan_GO executable (e.g., `enscan-v1.2.1-windows-amd64.exe`) and place it in an accessible location (e.g., the `servers/` directory or in your system PATH).
+1. **Get Executable File**: Download the ENScan_GO executable (e.g., `enscan-v1.2.1-windows-amd64.exe`) and place it in an accessible location (e.g., the `servers/` directory or in your system PATH).
 
-2.  **Configure `config.json`**:
+2. **Configure `config.json`**:
 
     ```json
     {
@@ -284,7 +283,7 @@ Suppose you want to integrate ENScan_GO, a Go program that can be started with `
 
     Here, we specify `type` as `sse`, provide the `url` it listens on, and use `command` and `args` to tell the Gateway how to start this local SSE server.
 
-3.  **Restart Gateway**: Save `config.json` and restart MCP Gateway.
+3. **Restart Gateway**: Save `config.json` and restart MCP Gateway.
 
 The Gateway will first start the ENScan_GO process, then connect to `http://127.0.0.1:8080/sse`. After starting, you should see tools named `enscan/...`.
 

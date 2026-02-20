@@ -12,8 +12,8 @@ import asyncio
 try:
     import bridge_app
 except ImportError as e_imp:
-    print(f"严重错误: 无法导入 bridge_app.py. 请确保该文件存在且在PYTHONPATH中。错误: {e_imp}",
-          file=sys.stderr)
+    print(f"Fatal error: unable to import bridge_app.py. Ensure the file exists and is on PYTHONPATH. Error: {e_imp}",
+        file=sys.stderr)
     sys.exit(1)
 
 LOG_DIR = "logs"
@@ -99,14 +99,14 @@ BASE_LOG_CFG = {
 
 def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
     """
-    设置日志系统。
-    使用基于时间戳和日志级别的动态文件名。
-    根据命令行参数调整特定应用模块的日志级别。
+    Set up the logging system.
+    Uses a timestamped dynamic filename and adjusts module log levels
+    based on command-line arguments.
     """
     log_lvl_valid = log_lvl_str.upper()
     valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     if log_lvl_valid not in valid_levels:
-        print(f"警告: 无效的日志级别 '{log_lvl_str}'. 将使用 'INFO'.")
+        print(f"Warning: invalid log level '{log_lvl_str}'. Using 'INFO'.")
         log_lvl_valid = 'INFO'
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -137,9 +137,9 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
 
     try:
         logging.config.dictConfig(log_cfg)
-        print(f"日志系统已初始化。文件日志级别: {log_lvl_valid}, 日志文件: {log_fpath}")
+        print(f"Logging initialized. File log level: {log_lvl_valid}, log file: {log_fpath}")
     except Exception as e_log_cfg:
-        print(f"应用日志配置时发生错误: {e_log_cfg}", file=sys.stderr)
+        print(f"Error applying logging configuration: {e_log_cfg}", file=sys.stderr)
 
     return log_fpath, log_lvl_valid
 
@@ -149,18 +149,18 @@ module_logger = logging.getLogger(__name__)
 
 
 async def main_async(host: str, port: int, log_lvl_cli: str):
-    """异步主函数，用于启动和管理 Uvicorn 服务器。"""
+    """Async main function to start and manage the Uvicorn server."""
     global uvicorn_svr_inst
 
     log_fpath, cfg_log_lvl = setup_logging(log_lvl_cli)
 
     module_logger.info(
-        f"---- {bridge_app.SERVER_NAME} v{bridge_app.SERVER_VERSION} 启动 (文件日志级别: {cfg_log_lvl}) ----"
+        f"---- {bridge_app.SERVER_NAME} v{bridge_app.SERVER_VERSION} starting (file log level: {cfg_log_lvl}) ----"
     )
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cfg_abs_path = os.path.join(script_dir, "config.json")
-    module_logger.info(f"配置文件路径解析为: {cfg_abs_path}")
+    module_logger.info(f"Configuration file path resolved to: {cfg_abs_path}")
 
     if hasattr(bridge_app, 'app') and bridge_app.app:
         app_s = bridge_app.app.state
@@ -169,9 +169,9 @@ async def main_async(host: str, port: int, log_lvl_cli: str):
         app_s.actual_log_file = log_fpath
         app_s.file_log_level_configured = cfg_log_lvl
         app_s.config_file_path = cfg_abs_path
-        module_logger.debug("已将配置参数存储到 app.state。")
+        module_logger.debug("Configuration parameters stored in app.state.")
     else:
-        module_logger.error("无法在 bridge_app 中找到 'app' 对象。服务器无法启动。")
+        module_logger.error("Could not find 'app' object in bridge_app. Server cannot start.")
         sys.exit(1)
 
     uvicorn_cfg = uvicorn.Config(
@@ -183,33 +183,33 @@ async def main_async(host: str, port: int, log_lvl_cli: str):
     )
     uvicorn_svr_inst = uvicorn.Server(uvicorn_cfg)
 
-    module_logger.info(f"准备启动 Uvicorn 服务器: http://{host}:{port}")
+    module_logger.info(f"Preparing to start Uvicorn server: http://{host}:{port}")
     try:
         await uvicorn_svr_inst.serve()
     except (KeyboardInterrupt, SystemExit) as e_exit:
-        module_logger.info(f"服务器因 '{type(e_exit).__name__}' 停止。")
+        module_logger.info(f"Server stopped due to '{type(e_exit).__name__}'.")
 
     except Exception as e_serve:
-        module_logger.exception(f"Uvicorn 服务器运行时发生意外错误: {e_serve}")
+        module_logger.exception(f"Unexpected error while running Uvicorn server: {e_serve}")
         raise
     finally:
-        module_logger.info(f"{bridge_app.SERVER_NAME} 已关闭或正在关闭。")
+        module_logger.info(f"{bridge_app.SERVER_NAME} has shut down or is shutting down.")
 
 
 def main():
-    """程序主入口，解析参数并启动异步主函数。"""
-    parser = argparse.ArgumentParser(description=f"启动 MCP 桥接服务器")
+    """Program entry point: parse arguments and start the async main."""
+    parser = argparse.ArgumentParser(description="Start MCP Bridge Server")
     parser.add_argument('--host',
                         type=str,
                         default='0.0.0.0',
-                        help='主机地址 (默认: 0.0.0.0)')
-    parser.add_argument('--port', type=int, default=9000, help='端口 (默认: 9000)')
+                        help='Host address (default: 0.0.0.0)')
+    parser.add_argument('--port', type=int, default=9000, help='Port (default: 9000)')
     parser.add_argument(
         '--log-level',
         type=str,
         default='info',
         choices=['debug', 'info', 'warning', 'error', 'critical'],
-        help='设置文件日志级别 (默认: info)')
+        help='Set file logging level (default: info)')
     args = parser.parse_args()
 
     try:
@@ -218,21 +218,21 @@ def main():
                        port=args.port,
                        log_lvl_cli=args.log_level))
     except KeyboardInterrupt:
-        module_logger.info("MCP Bridge Server 主程序被 KeyboardInterrupt 中断。")
+        module_logger.info("MCP Bridge Server main program interrupted by KeyboardInterrupt.")
     except SystemExit as e_sys_exit:
 
         if e_sys_exit.code is None or e_sys_exit.code == 0:
             module_logger.info(
-                f"MCP Bridge Server 主程序正常退出 (代码: {e_sys_exit.code})。")
+                f"MCP Bridge Server main program exited normally (code: {e_sys_exit.code}).")
         else:
             module_logger.error(
-                f"MCP Bridge Server 主程序因 SystemExit 异常退出 (代码: {e_sys_exit.code})。"
+                f"MCP Bridge Server main program exited with SystemExit (code: {e_sys_exit.code})."
             )
     except Exception as e_fatal:
-        module_logger.exception(f"MCP Bridge Server 主程序发生未捕获的致命错误: {e_fatal}")
+        module_logger.exception(f"MCP Bridge Server main program encountered an uncaught fatal error: {e_fatal}")
         sys.exit(1)
     finally:
-        module_logger.info("MCP Bridge Server 应用程序执行完毕。")
+        module_logger.info("MCP Bridge Server application finished.")
 
 
 if __name__ == "__main__":

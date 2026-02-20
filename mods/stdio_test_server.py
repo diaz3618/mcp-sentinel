@@ -14,14 +14,13 @@ logger.info("StdioTest MCP Server instance created.")
 @mcp.tool()
 async def echo_stdio(message: str) -> str:
     """
-    一个简单的 Stdio 测试工具，它会回显接收到的消息。
     A simple Stdio test tool that echoes back the received message.
 
     Parameters:
-    message (str): 要回显的消息。The message to echo.
+    message (str): The message to echo.
 
     Returns:
-    str: 前缀为 "Stdio Echo: " 的原始消息。The original message prefixed with "Stdio Echo: ".
+    str: The original message prefixed with "Stdio Echo: ".
     """
     logger.info(f"Tool 'echo_stdio' called with message: '{message}'")
     response = f"Stdio Echo: {message}"
@@ -32,15 +31,14 @@ async def echo_stdio(message: str) -> str:
 @mcp.tool()
 async def add_stdio(a: int, b: int) -> int:
     """
-    一个简单的 Stdio 测试工具，计算两个整数的和。
     A simple Stdio test tool that calculates the sum of two integers.
 
     Parameters:
-    a (int): 第一个整数。The first integer.
-    b (int): 第二个整数。The second integer.
+    a (int): The first integer.
+    b (int): The second integer.
 
     Returns:
-    int: 两个整数的和。The sum of the two integers.
+    int: The sum of the two integers.
     """
     logger.info(f"Tool 'add_stdio' called with a={a}, b={b}")
     result = a + b
@@ -51,7 +49,6 @@ async def add_stdio(a: int, b: int) -> int:
 @mcp.resource("x-stdio-test-resource://local/greeting")
 def get_stdio_greeting() -> str:
     """
-    一个简单的 Stdio 测试资源，返回一个固定的问候语。
     A simple Stdio test resource that returns a fixed greeting.
     """
     logger.info("Resource 'x-stdio-test-resource://local/greeting' requested.")
