@@ -11,7 +11,7 @@ from starlette.applications import Starlette
 from mcp_gateway.bridge.capability_registry import CapabilityRegistry
 from mcp_gateway.bridge.client_manager import ClientManager
 from mcp_gateway.config import load_and_validate_config
-from mcp_gateway.constants import SERVER_NAME, SERVER_VERSION, AUTHOR
+from mcp_gateway.constants import AUTHOR, SERVER_NAME, SERVER_VERSION
 from mcp_gateway.display.console import (
     disp_console_status,
     gen_status_info,
@@ -32,7 +32,7 @@ async def _setup_app_configs(
     import os
 
     cfg_fpath = getattr(app_state, "config_file_path", "config.json")
-    logger.info(f"Loading configuration file: {cfg_fpath}")
+    logger.info("Loading configuration file: %s", cfg_fpath)
 
     status_info_load = gen_status_info(
         app_state,
@@ -44,8 +44,8 @@ async def _setup_app_configs(
     config = load_and_validate_config(cfg_fpath)
     total_svrs = len(config)
     logger.info(
-        f"Configuration loaded and validated successfully; "
-        f"{total_svrs} backend entries."
+        "Configuration loaded and validated successfully; " "%s backend entries.",
+        total_svrs,
     )
 
     status_info_loaded = gen_status_info(
@@ -65,9 +65,7 @@ async def _connect_backends(
     """Connect all backend servers."""
     total_svrs = len(config)
     status_msg_conn = f"Connecting {total_svrs} backend services..."
-    status_info_conn_start = gen_status_info(
-        app_state, status_msg_conn, total_svrs_num=total_svrs
-    )
+    status_info_conn_start = gen_status_info(app_state, status_msg_conn, total_svrs_num=total_svrs)
     disp_console_status("🔌 Backend Connection", status_info_conn_start)
     log_file_status(status_info_conn_start)
 
@@ -77,14 +75,10 @@ async def _connect_backends(
 
     log_lvl_conn = logging.INFO
     if conn_svrs == 0 and total_svrs > 0:
-        conn_msg_short = (
-            f"❌ All backend connections failed ({conn_svrs}/{total_svrs})"
-        )
+        conn_msg_short = f"❌ All backend connections failed ({conn_svrs}/{total_svrs})"
         log_lvl_conn = logging.ERROR
     elif conn_svrs < total_svrs:
-        conn_msg_short = (
-            f"⚠️ Partial backend connection failure ({conn_svrs}/{total_svrs})"
-        )
+        conn_msg_short = f"⚠️ Partial backend connection failure ({conn_svrs}/{total_svrs})"
         log_lvl_conn = logging.WARNING
     else:
         conn_msg_short = (
@@ -116,13 +110,10 @@ async def _discover_capabilities(
     app_state: object,
     conn_svrs_num: int,
     total_svrs_num: int,
-) -> tuple[
-    List[mcp_types.Tool], List[mcp_types.Resource], List[mcp_types.Prompt]
-]:
+) -> tuple[List[mcp_types.Tool], List[mcp_types.Resource], List[mcp_types.Prompt]]:
     """Discover and register capabilities from all backends."""
     status_msg_disc = (
-        f"Discovering MCP capabilities "
-        f"({conn_svrs_num}/{total_svrs_num} services connected)..."
+        f"Discovering MCP capabilities " f"({conn_svrs_num}/{total_svrs_num} services connected)..."
     )
     status_info_disc_start = gen_status_info(
         app_state,
@@ -143,9 +134,7 @@ async def _discover_capabilities(
         resources = registry.get_aggregated_resources()
         prompts = registry.get_aggregated_prompts()
     else:
-        logger.info(
-            "No active backend sessions, skipping capability discovery."
-        )
+        logger.info("No active backend sessions, skipping capability discovery.")
 
     status_info_disc_done = gen_status_info(
         app_state,
@@ -169,9 +158,7 @@ def _init_gateway_components(
     """Attach core bridge components to the MCP server instance."""
     mcp_svr_instance.manager = cli_manager
     mcp_svr_instance.registry = cap_registry
-    logger.info(
-        "ClientManager and CapabilityRegistry attached to mcp_server instance."
-    )
+    logger.info("ClientManager and CapabilityRegistry attached to mcp_server instance.")
 
 
 @asynccontextmanager
@@ -181,25 +168,27 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
 
     app_s = app.state
     logger.info(
-        f"Gateway server '{SERVER_NAME}' v{SERVER_VERSION} "
-        "startup sequence started..."
+        "Gateway server '%s' v%s startup sequence started...",
+        SERVER_NAME,
+        SERVER_VERSION,
     )
-    logger.info(f"Author: {AUTHOR}")
+    logger.info("Author: %s", AUTHOR)
     logger.debug(
-        f"Lifespan received host='{getattr(app_s, 'host', 'N/A')}', "
-        f"port={getattr(app_s, 'port', 0)}"
+        "Lifespan received host='%s', port=%s",
+        getattr(app_s, "host", "N/A"),
+        getattr(app_s, "port", 0),
     )
     logger.info(
-        f"Configured file log level: "
-        f"{getattr(app_s, 'file_log_level_configured', DEFAULT_LOG_LVL)}"
+        "Configured file log level: %s",
+        getattr(app_s, "file_log_level_configured", DEFAULT_LOG_LVL),
     )
     logger.info(
-        f"Actual log file: "
-        f"{getattr(app_s, 'actual_log_file', DEFAULT_LOG_FPATH)}"
+        "Actual log file: %s",
+        getattr(app_s, "actual_log_file", DEFAULT_LOG_FPATH),
     )
     logger.info(
-        f"Configuration file in use: "
-        f"{getattr(app_s, 'config_file_path', 'config.json')}"
+        "Configuration file in use: %s",
+        getattr(app_s, "config_file_path", "config.json"),
     )
 
     cli_mgr = ClientManager()
@@ -214,16 +203,12 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
     total_svrs: int = 0
 
     try:
-        status_info_init = gen_status_info(
-            app_s, "Gateway server is starting..."
-        )
+        status_info_init = gen_status_info(app_s, "Gateway server is starting...")
         disp_console_status("🚀 Initialization", status_info_init)
         log_file_status(status_info_init)
 
         _, config_data = await _setup_app_configs(app_s)
-        conn_svrs, total_svrs, active_sess = await _connect_backends(
-            cli_mgr, config_data, app_s
-        )
+        conn_svrs, total_svrs, active_sess = await _connect_backends(cli_mgr, config_data, app_s)
         tools, resources, prompts = await _discover_capabilities(
             cap_reg, active_sess, app_s, conn_svrs, total_svrs
         )
@@ -240,14 +225,14 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             prompts=prompts,
             conn_svrs_num=conn_svrs,
             total_svrs_num=total_svrs,
-            route_map=cap_reg._route_map,
+            route_map=cap_reg.get_route_map(),
         )
         disp_console_status("✅ Service Ready", status_info_ready)
         log_file_status(status_info_ready)
         yield
 
     except ConfigurationError as e_cfg:
-        logger.exception(f"Configuration error: {e_cfg}")
+        logger.exception("Configuration error: %s", e_cfg)
         err_detail_msg = f"Configuration error: {e_cfg}"
         status_info_fail = gen_status_info(
             app_s,
@@ -259,7 +244,7 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
         log_file_status(status_info_fail, log_lvl=logging.ERROR)
         raise
     except BackendServerError as e_backend:
-        logger.exception(f"Backend error: {e_backend}")
+        logger.exception("Backend error: %s", e_backend)
         err_detail_msg = f"Backend error: {e_backend}"
         status_info_fail = gen_status_info(
             app_s,
@@ -273,7 +258,8 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
         raise
     except Exception as e_exc:
         logger.exception(
-            f"Unexpected error during lifespan startup: {e_exc}"
+            "Unexpected error during lifespan startup: %s",
+            e_exc,
         )
         err_detail_msg = f"Unexpected error: {type(e_exc).__name__} - {e_exc}"
         status_info_fail = gen_status_info(
@@ -288,7 +274,8 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
         raise
     finally:
         logger.info(
-            f"Gateway server '{SERVER_NAME}' shutdown sequence started..."
+            "Gateway server '%s' shutdown sequence started...",
+            SERVER_NAME,
         )
         status_info_shutdown = gen_status_info(
             app_s,
@@ -299,22 +286,16 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             conn_svrs_num=conn_svrs,
             total_svrs_num=total_svrs,
         )
-        disp_console_status(
-            "🛑 Shutting Down", status_info_shutdown, is_final=False
-        )
+        disp_console_status("🛑 Shutting Down", status_info_shutdown, is_final=False)
         log_file_status(status_info_shutdown, log_lvl=logging.WARNING)
 
-        active_manager = (
-            mcp_server.manager if mcp_server.manager else cli_mgr
-        )
+        active_manager = mcp_server.manager if mcp_server.manager else cli_mgr
         if active_manager:
             logger.info("Stopping all backend server connections...")
             await active_manager.stop_all()
             logger.info("Backend connections stopped.")
         else:
-            logger.warning(
-                "ClientManager not initialized/attached; skipping stop step."
-            )
+            logger.warning("ClientManager not initialized/attached; skipping stop step.")
 
         final_msg_short = (
             "Server shut down normally."
@@ -332,10 +313,9 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             final_msg_short,
             err_msg=err_detail_msg if not startup_ok else None,
         )
-        disp_console_status(
-            f"{final_icon} Final Status", status_info_final, is_final=True
-        )
+        disp_console_status(f"{final_icon} Final Status", status_info_final, is_final=True)
         log_file_status(status_info_final, log_lvl=final_log_lvl)
         logger.info(
-            f"Gateway server '{SERVER_NAME}' shutdown sequence completed."
+            "Gateway server '%s' shutdown sequence completed.",
+            SERVER_NAME,
         )

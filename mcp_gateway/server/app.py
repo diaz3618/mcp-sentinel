@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 mcp_server = McpServer(SERVER_NAME)
 mcp_server.manager: Optional[object] = None  # type: ignore[assignment]
 mcp_server.registry: Optional[object] = None  # type: ignore[assignment]
-logger.debug(f"Underlying MCP server instance '{mcp_server.name}' created.")
+logger.debug("Underlying MCP server instance '%s' created.", mcp_server.name)
 
 # Register all MCP handlers
 register_handlers(mcp_server)
@@ -34,8 +34,10 @@ def create_app() -> Starlette:
         ],
     )
     logger.info(
-        f"Starlette ASGI app '{SERVER_NAME}' created. "
-        f"SSE GET on {SSE_PATH}, POST on {POST_MESSAGES_PATH}"
+        "Starlette ASGI app '%s' created. SSE GET on %s, POST on %s",
+        SERVER_NAME,
+        SSE_PATH,
+        POST_MESSAGES_PATH,
     )
     return application
 

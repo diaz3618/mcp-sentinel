@@ -21,7 +21,7 @@ def register_handlers(mcp_server: McpServer) -> None:
         if not mcp_server.registry:
             raise BackendServerError("Registry is not initialized")
         tools = mcp_server.registry.get_aggregated_tools()
-        logger.info(f"Returning {len(tools)} aggregated tools")
+        logger.info("Returning %s aggregated tools", len(tools))
         return tools
 
     @mcp_server.list_resources()
@@ -30,7 +30,7 @@ def register_handlers(mcp_server: McpServer) -> None:
         if not mcp_server.registry:
             raise BackendServerError("Registry is not initialized")
         resources = mcp_server.registry.get_aggregated_resources()
-        logger.info(f"Returning {len(resources)} aggregated resources")
+        logger.info("Returning %s aggregated resources", len(resources))
         return resources
 
     @mcp_server.list_prompts()
@@ -39,30 +39,25 @@ def register_handlers(mcp_server: McpServer) -> None:
         if not mcp_server.registry:
             raise BackendServerError("Registry is not initialized")
         prompts = mcp_server.registry.get_aggregated_prompts()
-        logger.info(f"Returning {len(prompts)} aggregated prompts")
+        logger.info("Returning %s aggregated prompts", len(prompts))
         return prompts
 
     @mcp_server.call_tool()
-    async def handle_call_tool(
-        name: str, arguments: Dict[str, Any]
-    ) -> List[mcp_types.TextContent]:
-        logger.debug(f"Handling callTool: name='{name}'")
+    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[mcp_types.TextContent]:
+        logger.debug("Handling callTool: name='%s'", name)
         result = await forward_request(
             name, "call_tool", arguments, mcp_server.registry, mcp_server.manager
         )
         if isinstance(result, mcp_types.CallToolResult):
             return result.content
         logger.error(
-            f"call_tool forwarding returned unexpected type: "
-            f"{type(result)} for tool '{name}'"
+            f"call_tool forwarding returned unexpected type: " f"{type(result)} for tool '{name}'"
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for tool call '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for tool call '{name}'.")
 
     @mcp_server.read_resource()
     async def handle_read_resource(name: str) -> mcp_types.ReadResourceResult:
-        logger.debug(f"Handling readResource: name='{name}'")
+        logger.debug("Handling readResource: name='%s'", name)
         result = await forward_request(
             name, "read_resource", None, mcp_server.registry, mcp_server.manager
         )
@@ -72,15 +67,13 @@ def register_handlers(mcp_server: McpServer) -> None:
             f"read_resource forwarding returned unexpected type: "
             f"{type(result)} for resource '{name}'"
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for resource read '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for resource read '{name}'.")
 
     @mcp_server.get_prompt()
     async def handle_get_prompt(
         name: str, arguments: Optional[Dict[str, Any]] = None
     ) -> mcp_types.GetPromptResult:
-        logger.debug(f"Handling getPrompt: name='{name}'")
+        logger.debug("Handling getPrompt: name='%s'", name)
         typed_args: Optional[Dict[str, str]] = None
         if arguments is not None:
             try:
@@ -105,8 +98,6 @@ def register_handlers(mcp_server: McpServer) -> None:
             f"get_prompt forwarding returned unexpected type: "
             f"{type(result)} for prompt '{name}'"
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for prompt '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for prompt '{name}'.")
 
     logger.debug("All MCP protocol handlers registered on server instance.")

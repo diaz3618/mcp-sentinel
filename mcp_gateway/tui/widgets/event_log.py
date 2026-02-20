@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from rich.text import Text
-
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import RichLog
-
 
 # Stage → colour mapping
 _STAGE_COLOURS: dict[str, str] = {

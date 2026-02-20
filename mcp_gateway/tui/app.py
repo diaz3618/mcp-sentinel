@@ -9,7 +9,6 @@ import threading
 from typing import Any, Dict, Optional
 
 import uvicorn
-
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -127,11 +126,9 @@ class GatewayApp(App):
             loop.close()
             # Notify the TUI (thread-safe)
             try:
-                self.call_from_thread(
-                    self.post_message, ServerStopped(error=error_msg)
-                )
+                self.call_from_thread(self.post_message, ServerStopped(error=error_msg))
             except Exception:
-                pass
+                logger.debug("Failed to post ServerStopped", exc_info=True)
 
     async def _server_main(self) -> None:
         """Async main running inside the server thread's event loop."""
@@ -156,9 +153,7 @@ class GatewayApp(App):
             host=self._host,
             port=self._port,
             log_config=None,
-            log_level=(
-                cfg_log_lvl.lower() if cfg_log_lvl == "DEBUG" else "warning"
-            ),
+            log_level=(cfg_log_lvl.lower() if cfg_log_lvl == "DEBUG" else "warning"),
         )
         self._uvicorn_server = uvicorn.Server(uvicorn_cfg)
         await self._uvicorn_server.serve()
@@ -273,7 +268,7 @@ class GatewayApp(App):
             tabs = self.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-tools"
         except Exception:
-            pass
+            logger.debug("Could not switch to tools tab", exc_info=True)
 
     def action_show_resources(self) -> None:
         """Switch capability table to Resources tab."""
@@ -283,7 +278,7 @@ class GatewayApp(App):
             tabs = self.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-resources"
         except Exception:
-            pass
+            logger.debug("Could not switch to resources tab", exc_info=True)
 
     def action_show_prompts(self) -> None:
         """Switch capability table to Prompts tab."""
@@ -293,7 +288,7 @@ class GatewayApp(App):
             tabs = self.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-prompts"
         except Exception:
-            pass
+            logger.debug("Could not switch to prompts tab", exc_info=True)
 
     def action_quit(self) -> None:
         """Gracefully stop the server and exit the TUI."""

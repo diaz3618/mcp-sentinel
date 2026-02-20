@@ -29,14 +29,16 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
     log_fpath, cfg_log_lvl = setup_logging(log_lvl_cli)
 
     module_logger.info(
-        f"---- {SERVER_NAME} v{SERVER_VERSION} starting "
-        f"(file log level: {cfg_log_lvl}) ----"
+        "---- %s v%s starting (file log level: %s) ----",
+        SERVER_NAME,
+        SERVER_VERSION,
+        cfg_log_lvl,
     )
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(script_dir)
     cfg_abs_path = os.path.join(project_dir, "config.json")
-    module_logger.info(f"Configuration file path resolved to: {cfg_abs_path}")
+    module_logger.info("Configuration file path resolved to: %s", cfg_abs_path)
 
     # Import app here to avoid circular imports at module level
     from mcp_gateway.server.app import app
@@ -58,31 +60,21 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
     )
     uvicorn_svr_inst = uvicorn.Server(uvicorn_cfg)
 
-    module_logger.info(
-        f"Preparing to start Uvicorn server: http://{host}:{port}"
-    )
+    module_logger.info("Preparing to start Uvicorn server: http://%s:%s", host, port)
     try:
         await uvicorn_svr_inst.serve()
     except (KeyboardInterrupt, SystemExit) as e_exit:
-        module_logger.info(
-            f"Server stopped due to '{type(e_exit).__name__}'."
-        )
+        module_logger.info("Server stopped due to '%s'.", type(e_exit).__name__)
     except Exception as e_serve:
-        module_logger.exception(
-            f"Unexpected error while running Uvicorn server: {e_serve}"
-        )
+        module_logger.exception("Unexpected error while running Uvicorn server: %s", e_serve)
         raise
     finally:
-        module_logger.info(
-            f"{SERVER_NAME} has shut down or is shutting down."
-        )
+        module_logger.info("%s has shut down or is shutting down.", SERVER_NAME)
 
 
 def main() -> None:
     """Program entry point: parse arguments and start the async main."""
-    parser = argparse.ArgumentParser(
-        description=f"Start {SERVER_NAME} v{SERVER_VERSION}"
-    )
+    parser = argparse.ArgumentParser(description=f"Start {SERVER_NAME} v{SERVER_VERSION}")
     parser.add_argument(
         "--host",
         type=str,
@@ -121,28 +113,29 @@ def main() -> None:
                 )
             )
         except KeyboardInterrupt:
-            module_logger.info(
-                f"{SERVER_NAME} main program interrupted by KeyboardInterrupt."
-            )
+            module_logger.info("%s main program interrupted by KeyboardInterrupt.", SERVER_NAME)
         except SystemExit as e_sys_exit:
             if e_sys_exit.code is None or e_sys_exit.code == 0:
                 module_logger.info(
-                    f"{SERVER_NAME} main program exited normally "
-                    f"(code: {e_sys_exit.code})."
+                    "%s main program exited normally (code: %s).",
+                    SERVER_NAME,
+                    e_sys_exit.code,
                 )
             else:
                 module_logger.error(
-                    f"{SERVER_NAME} main program exited with SystemExit "
-                    f"(code: {e_sys_exit.code})."
+                    "%s main program exited with SystemExit (code: %s).",
+                    SERVER_NAME,
+                    e_sys_exit.code,
                 )
         except Exception as e_fatal:
             module_logger.exception(
-                f"{SERVER_NAME} main program encountered an uncaught fatal "
-                f"error: {e_fatal}"
+                "%s main program encountered an uncaught fatal error: %s",
+                SERVER_NAME,
+                e_fatal,
             )
             sys.exit(1)
         finally:
-            module_logger.info(f"{SERVER_NAME} application finished.")
+            module_logger.info("%s application finished.", SERVER_NAME)
     else:
         # TUI mode (default) — Textual owns the main thread
         try:
@@ -162,14 +155,13 @@ def main() -> None:
             )
             sys.exit(1)
         except KeyboardInterrupt:
-            module_logger.info(
-                f"{SERVER_NAME} TUI interrupted by KeyboardInterrupt."
-            )
+            module_logger.info("%s TUI interrupted by KeyboardInterrupt.", SERVER_NAME)
         except Exception as e_fatal:
             module_logger.exception(
-                f"{SERVER_NAME} TUI encountered an uncaught fatal error: "
-                f"{e_fatal}"
+                "%s TUI encountered an uncaught fatal error: %s",
+                SERVER_NAME,
+                e_fatal,
             )
             sys.exit(1)
         finally:
-            module_logger.info(f"{SERVER_NAME} application finished.")
+            module_logger.info("%s application finished.", SERVER_NAME)

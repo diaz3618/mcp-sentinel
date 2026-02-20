@@ -52,9 +52,7 @@ def _validate_str_dict(data: Any, field_name: str, svr_name: str) -> Dict[str, s
     return validated
 
 
-def _validate_stdio_config(
-    svr_name: str, srv_conf: Dict[str, Any]
-) -> Dict[str, Any]:
+def _validate_stdio_config(svr_name: str, srv_conf: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and build a stdio server configuration entry."""
     cmd = srv_conf.get("command")
     if not isinstance(cmd, str) or not cmd.strip():
@@ -70,21 +68,15 @@ def _validate_stdio_config(
     if "env" in srv_conf and srv_conf["env"] is not None:
         cmd_env = _validate_str_dict(srv_conf["env"], "env", svr_name)
 
-    stdio_params = StdioServerParameters(
-        command=cmd.strip(), args=cmd_args, env=cmd_env
-    )
+    stdio_params = StdioServerParameters(command=cmd.strip(), args=cmd_args, env=cmd_env)
     return {"type": "stdio", "params": stdio_params}
 
 
-def _validate_sse_config(
-    svr_name: str, srv_conf: Dict[str, Any]
-) -> Dict[str, Any]:
+def _validate_sse_config(svr_name: str, srv_conf: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and build an SSE server configuration entry."""
     sse_url = srv_conf.get("url")
     if not isinstance(sse_url, str) or not sse_url.strip():
-        raise ConfigurationError(
-            f"SSE server '{svr_name}' field 'url' must be a non-empty string."
-        )
+        raise ConfigurationError(f"SSE server '{svr_name}' field 'url' must be a non-empty string.")
 
     sse_url = sse_url.strip()
     if not sse_url.startswith(("http://", "https://")):
@@ -128,9 +120,9 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         ConfigurationError: If the file is missing, malformed, or contains
             no valid server configurations.
     """
-    logger.debug(f"Loading configuration file: {cfg_fpath}")
+    logger.debug("Loading configuration file: %s", cfg_fpath)
     if not os.path.exists(cfg_fpath):
-        logger.error(f"Configuration file not found: {cfg_fpath}")
+        logger.error("Configuration file not found: %s", cfg_fpath)
         raise ConfigurationError(f"Configuration file does not exist: {cfg_fpath}")
 
     try:
@@ -160,7 +152,7 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
         )
 
     validated_configs: Dict[str, Dict[str, Any]] = {}
-    logger.debug(f"Found {len(raw_data)} server configuration entries to validate.")
+    logger.debug("Found %s server configuration entries to validate.", len(raw_data))
 
     type_validators = {
         "stdio": _validate_stdio_config,
@@ -192,15 +184,17 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
             )
             continue
 
-        logger.debug(f"Validating server '{svr_name}' (type: {svr_type})")
+        logger.debug("Validating server '%s' (type: %s)", svr_name, svr_type)
 
         try:
             validator = type_validators[svr_type]
             validated_configs[svr_name] = validator(svr_name, srv_conf_raw)
-            logger.debug(f"Server '{svr_name}' configuration validated successfully.")
+            logger.debug("Server '%s' configuration validated successfully.", svr_name)
         except ConfigurationError as e_svr_cfg:
             logger.error(
-                f"Invalid configuration for server '{svr_name}', skipped: {e_svr_cfg}"
+                "Invalid configuration for server '%s', skipped: %s",
+                svr_name,
+                e_svr_cfg,
             )
         except Exception as e_svr_unexpected:
             logger.error(
@@ -211,12 +205,11 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
 
     if not validated_configs and raw_data:
         logger.error("All server configurations in the file are invalid.")
-        raise ConfigurationError(
-            "No valid server configurations were found in the file."
-        )
+        raise ConfigurationError("No valid server configurations were found in the file.")
     elif not validated_configs:
         logger.info(
-            f"Configuration file '{cfg_fpath}' is empty or contains no server entries."
+            "Configuration file '%s' is empty or contains no server entries.",
+            cfg_fpath,
         )
 
     logger.info(

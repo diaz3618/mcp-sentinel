@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
+
+logger = logging.getLogger(__name__)
 
 
 class BackendStatusWidget(Widget):
@@ -44,11 +48,9 @@ class BackendStatusWidget(Widget):
                 color = "yellow"
 
             self.query_one("#backend-bar", Static).update(bar_text)
-            self.query_one("#backend-detail", Static).update(
-                f"[{color}]{detail}[/{color}]"
-            )
+            self.query_one("#backend-detail", Static).update(f"[{color}]{detail}[/{color}]")
         except Exception:
-            pass
+            logger.debug("BackendStatusWidget not yet mounted", exc_info=True)
 
     def watch_connected(self) -> None:
         self._refresh_display()

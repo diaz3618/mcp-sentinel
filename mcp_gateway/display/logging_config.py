@@ -10,17 +10,12 @@ from typing import Tuple
 
 from mcp_gateway.constants import LOG_DIR
 
-os.makedirs(LOG_DIR, exist_ok=True)
-
 BASE_LOG_CFG = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "simple_file": {
-            "format": (
-                "%(asctime)s - %(name)25s:%(lineno)-4d - "
-                "%(levelname)-7s - %(message)s"
-            ),
+            "format": ("%(asctime)s - %(name)25s:%(lineno)-4d - " "%(levelname)-7s - %(message)s"),
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -112,9 +107,10 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
         log_lvl_valid = "INFO"
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs(LOG_DIR, exist_ok=True)
     log_fpath = os.path.join(LOG_DIR, f"gateway_{ts}_{log_lvl_valid}.log")
 
-    log_cfg = copy.deepcopy(BASE_LOG_CFG)
+    log_cfg: dict = copy.deepcopy(BASE_LOG_CFG)
     log_cfg["handlers"]["file_handler"]["filename"] = log_fpath
 
     app_loggers_cfg = [
@@ -141,16 +137,11 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
     log_cfg["loggers"]["uvicorn.access"]["level"] = (
         "INFO" if log_lvl_valid == "DEBUG" else "WARNING"
     )
-    log_cfg["root"]["level"] = (
-        log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
-    )
+    log_cfg["root"]["level"] = log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
 
     try:
         logging.config.dictConfig(log_cfg)
-        print(
-            f"Logging initialized. File log level: {log_lvl_valid}, "
-            f"log file: {log_fpath}"
-        )
+        print(f"Logging initialized. File log level: {log_lvl_valid}, " f"log file: {log_fpath}")
     except Exception as e_log_cfg:
         print(
             f"Error applying logging configuration: {e_log_cfg}",

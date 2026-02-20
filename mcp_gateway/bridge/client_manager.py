@@ -41,13 +41,13 @@ async def _log_subproc_stream(
         try:
             line_bytes = await stream.readline()
             if not line_bytes:
-                logger.debug(f"[{svr_name}-{stream_name}] Stream ended (EOF).")
+                logger.debug("[%s-%s] Stream ended (EOF).", svr_name, stream_name)
                 break
             line = line_bytes.decode(errors="replace").strip()
             if line:
-                logger.info(f"[{svr_name}-{stream_name}] {line}")
+                logger.info("[%s-%s] %s", svr_name, stream_name, line)
         except asyncio.CancelledError:
-            logger.debug(f"[{svr_name}-{stream_name}] Logging task was cancelled.")
+            logger.debug("[%s-%s] Logging task was cancelled.", svr_name, stream_name)
             break
         except Exception as e_stream:
             logger.error(
@@ -75,7 +75,10 @@ async def _manage_subproc(
         actual_cmd = py_exec if cmd_to_exec.lower() == "python" else cmd_to_exec
 
         logger.info(
-            f"[{svr_name}] Preparing to start local process: '{actual_cmd}' args: {args}"
+            "[%s] Preparing to start local process: '%s' args: %s",
+            svr_name,
+            actual_cmd,
+            args,
         )
 
         current_env = os.environ.copy()
@@ -89,7 +92,7 @@ async def _manage_subproc(
             stderr=asyncio.subprocess.PIPE,
             env=current_env,
         )
-        logger.info(f"[{svr_name}] Local process started (PID: {process.pid}).")
+        logger.info("[%s] Local process started (PID: %s).", svr_name, process.pid)
 
         if process.stdout:
             stdout_log_task = asyncio.create_task(
@@ -122,10 +125,8 @@ async def _manage_subproc(
             stderr_log_task.cancel()
 
         if stdout_log_task or stderr_log_task:
-            await asyncio.gather(
-                stdout_log_task, stderr_log_task, return_exceptions=True
-            )
-            logger.debug(f"[{svr_name}] Subprocess stream logging tasks completed.")
+            await asyncio.gather(stdout_log_task, stderr_log_task, return_exceptions=True)
+            logger.debug("[%s] Subprocess stream logging tasks completed.", svr_name)
 
         if process and process.returncode is None:
             logger.info(
@@ -145,7 +146,9 @@ async def _manage_subproc(
                 process.kill()
                 await process.wait()
                 logger.info(
-                    f"[{svr_name}] Local process (PID: {process.pid}) was force-killed."
+                    "[%s] Local process (PID: %s) was force-killed.",
+                    svr_name,
+                    process.pid,
                 )
             except ProcessLookupError:
                 logger.warning(
@@ -169,14 +172,16 @@ def _log_backend_fail(
     """Helper to log backend startup/connection failures."""
     svr_type_str = svr_type or "unknown type"
     if isinstance(e, asyncio.TimeoutError):
-        logger.error(f"[{svr_name}] ({svr_type_str}) {context} timed out.")
+        logger.error("[%s] (%s) %s timed out.", svr_name, svr_type_str, context)
     elif isinstance(e, ConfigurationError):
         logger.error(
-            f"[{svr_name}] ({svr_type_str}) Configuration error during {context}: {e}"
+            "[%s] (%s) Configuration error during %s: %s",
+            svr_name,
+            svr_type_str,
+            context,
+            e,
         )
-    elif isinstance(
-        e, (*SSE_NET_EXCS, ConnectionRefusedError, BrokenPipeError, ConnectionError)
-    ):
+    elif isinstance(e, (*SSE_NET_EXCS, ConnectionRefusedError, BrokenPipeError, ConnectionError)):
         logger.error(
             f"[{svr_name}] ({svr_type_str}) Network/connection error during "
             f"{context}: {type(e).__name__}: {e}"
@@ -188,7 +193,10 @@ def _log_backend_fail(
         )
     else:
         logger.exception(
-            f"[{svr_name}] ({svr_type_str}) Unexpected fatal error during {context}."
+            "[%s] (%s) Unexpected fatal error during %s.",
+            svr_name,
+            svr_type_str,
+            context,
         )
 
 
@@ -205,11 +213,11 @@ class ClientManager:
         self, svr_name: str, stdio_cfg: StdioServerParameters
     ) -> Tuple[Any, ClientSession]:
         """Initialize and connect to a stdio backend server."""
-        logger.debug(f"[{svr_name}] Stdio backend, preparing stdio_client.")
+        logger.debug("[%s] Stdio backend, preparing stdio_client.", svr_name)
 
         transport_ctx = stdio_client(stdio_cfg)
         streams = await self._exit_stack.enter_async_context(transport_ctx)
-        logger.debug(f"[{svr_name}] (stdio) transport streams established.")
+        logger.debug("[%s] (stdio) transport streams established.", svr_name)
 
         session_ctx = ClientSession(*streams)
         session = await self._exit_stack.enter_async_context(session_ctx)
@@ -226,7 +234,8 @@ class ClientManager:
         """Initialize and connect to an SSE backend; launch command first if configured."""
         if sse_cmd:
             logger.info(
-                f"[{svr_name}] Local launch command configured, starting SSE subprocess..."
+                "[%s] Local launch command configured, starting SSE subprocess...",
+                svr_name,
             )
             await self._exit_stack.enter_async_context(
                 _manage_subproc(sse_cmd, sse_cmd_args, sse_cmd_env, svr_name)
@@ -238,18 +247,16 @@ class ClientManager:
 
         transport_ctx = sse_client(url=sse_url)
         streams = await self._exit_stack.enter_async_context(transport_ctx)
-        logger.debug(f"[{svr_name}] (sse) transport streams established.")
+        logger.debug("[%s] (sse) transport streams established.", svr_name)
 
         session_ctx = ClientSession(*streams)
         session = await self._exit_stack.enter_async_context(session_ctx)
         return transport_ctx, session
 
-    async def _start_backend_svr(
-        self, svr_name: str, svr_conf: Dict[str, Any]
-    ) -> bool:
+    async def _start_backend_svr(self, svr_name: str, svr_conf: Dict[str, Any]) -> bool:
         """Start and initialize a single backend server connection."""
         svr_type = svr_conf.get("type")
-        logger.info(f"[{svr_name}] Attempting connection, type: {svr_type}...")
+        logger.info("[%s] Attempting connection, type: %s...", svr_name, svr_type)
         session: Optional[ClientSession] = None
 
         try:
@@ -257,8 +264,7 @@ class ClientManager:
                 stdio_params = svr_conf.get("params")
                 if not isinstance(stdio_params, StdioServerParameters):
                     raise ConfigurationError(
-                        f"Invalid stdio config for server '{svr_name}' "
-                        "('params' type mismatch)."
+                        f"Invalid stdio config for server '{svr_name}' " "('params' type mismatch)."
                     )
                 _, session = await self._init_stdio_backend(svr_name, stdio_params)
 
@@ -281,9 +287,7 @@ class ClientManager:
                 )
 
             if not session:
-                raise BackendServerError(
-                    f"[{svr_name}] ({svr_type}) Session could not be created."
-                )
+                raise BackendServerError(f"[{svr_name}] ({svr_type}) Session could not be created.")
 
             logger.info(
                 f"[{svr_name}] Initializing MCP connection (timeout: {MCP_INIT_TIMEOUT}s)..."
@@ -292,13 +296,17 @@ class ClientManager:
 
             self._sessions[svr_name] = session
             logger.info(
-                f"✅ MCP connection initialized for server '{svr_name}' ({svr_type})."
+                "✅ MCP connection initialized for server '%s' (%s).",
+                svr_name,
+                svr_type,
             )
             return True
 
         except asyncio.CancelledError:
             logger.warning(
-                f"[{svr_name}] ({svr_type or 'unknown type'}) startup task cancelled."
+                "[%s] (%s) startup task cancelled.",
+                svr_name,
+                svr_type or "unknown type",
             )
             return False
         except Exception as e_start:
@@ -307,9 +315,7 @@ class ClientManager:
 
     async def start_all(self, config_data: Dict[str, Dict[str, Any]]) -> None:
         """Start all backend server connections based on configuration."""
-        logger.info(
-            f"Starting all backend server connections ({len(config_data)} total)..."
-        )
+        logger.info("Starting all backend server connections (%s total)...", len(config_data))
         for svr_name, svr_conf in config_data.items():
             task = asyncio.create_task(
                 self._start_backend_svr(svr_name, svr_conf),
@@ -318,9 +324,7 @@ class ClientManager:
             self._pending_tasks[svr_name] = task
 
         if self._pending_tasks:
-            results = await asyncio.gather(
-                *self._pending_tasks.values(), return_exceptions=True
-            )
+            results = await asyncio.gather(*self._pending_tasks.values(), return_exceptions=True)
             for svr_name, result in zip(self._pending_tasks.keys(), results):
                 if isinstance(result, Exception):
                     logger.error(
@@ -344,37 +348,27 @@ class ClientManager:
         )
         if active_svrs_count < total_svrs_count:
             logger.warning(
-                "Some backend servers failed to start/connect. "
-                "Check file logs for details."
+                "Some backend servers failed to start/connect. " "Check file logs for details."
             )
 
     async def stop_all(self) -> None:
         """Close all active sessions and subprocesses started by the manager."""
-        logger.info(
-            "Stopping all backend connections and local processes (via AsyncExitStack)..."
-        )
+        logger.info("Stopping all backend connections and local processes (via AsyncExitStack)...")
 
         if self._pending_tasks:
-            logger.info(
-                f"Cancelling {len(self._pending_tasks)} pending startup tasks..."
-            )
+            logger.info("Cancelling %s pending startup tasks...", len(self._pending_tasks))
             for task in self._pending_tasks.values():
                 if not task.done():
                     task.cancel()
-            await asyncio.gather(
-                *self._pending_tasks.values(), return_exceptions=True
-            )
+            await asyncio.gather(*self._pending_tasks.values(), return_exceptions=True)
             self._pending_tasks.clear()
             logger.info("Pending startup tasks cancelled and cleaned up.")
 
-        logger.info(
-            "Calling AsyncExitStack.aclose() to clean up managed resources..."
-        )
+        logger.info("Calling AsyncExitStack.aclose() to clean up managed resources...")
         try:
             await self._exit_stack.aclose()
             logger.info(
-                "AsyncExitStack closed all managed contexts "
-                "(connections and subprocesses)."
+                "AsyncExitStack closed all managed contexts " "(connections and subprocesses)."
             )
         except Exception as e_aclose:
             logger.exception(

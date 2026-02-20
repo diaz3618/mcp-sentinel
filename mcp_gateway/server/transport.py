@@ -19,7 +19,7 @@ async def handle_sse(request: Request) -> None:
     """Handle incoming SSE connection requests."""
     from mcp_gateway.server.app import mcp_server
 
-    logger.debug(f"Received new SSE connection request (GET): {request.url}")
+    logger.debug("Received new SSE connection request (GET): %s", request.url)
 
     if not mcp_server.manager or not mcp_server.registry:
         logger.error(
@@ -36,21 +36,16 @@ async def handle_sse(request: Request) -> None:
         try:
             srv_caps = {}
             if mcp_server.registry:
-                srv_caps = mcp_server.get_capabilities(
-                    NotificationOptions(), {}
-                )
+                srv_caps = mcp_server.get_capabilities(NotificationOptions(), {})
             else:
                 logger.warning(
                     "mcp_server.registry is unset; SSE initialization "
                     "will use empty capabilities."
                 )
-            logger.debug(
-                f"Server capabilities for SSE connection: {srv_caps}"
-            )
+            logger.debug("Server capabilities for SSE connection: %s", srv_caps)
         except Exception as e_caps:
             logger.exception(
-                f"Error getting mcp_server.get_capabilities "
-                f"for SSE connection: {e_caps}"
+                f"Error getting mcp_server.get_capabilities " f"for SSE connection: {e_caps}"
             )
             srv_caps = {}
 
@@ -64,4 +59,4 @@ async def handle_sse(request: Request) -> None:
             f"with options: {init_opts}"
         )
         await mcp_server.run(read_stream, write_stream, init_opts)
-    logger.debug(f"SSE connection closed: {request.url}")
+    logger.debug("SSE connection closed: %s", request.url)

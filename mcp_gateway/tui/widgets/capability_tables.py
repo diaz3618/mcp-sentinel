@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import DataTable, Label, Static, TabbedContent, TabPane
+from textual.widgets import DataTable, TabbedContent, TabPane
+
+logger = logging.getLogger(__name__)
 
 
 def _trunc(text: str | None, max_len: int = 80) -> str:
@@ -29,11 +32,11 @@ class CapabilitySection(Widget):
 
     def compose(self) -> ComposeResult:
         with TabbedContent(id="cap-tabs"):
-            with TabPane(f"Tools (0)", id="tab-tools"):
+            with TabPane("Tools (0)", id="tab-tools"):
                 yield DataTable(id="dt-tools")
-            with TabPane(f"Resources (0)", id="tab-resources"):
+            with TabPane("Resources (0)", id="tab-resources"):
                 yield DataTable(id="dt-resources")
-            with TabPane(f"Prompts (0)", id="tab-prompts"):
+            with TabPane("Prompts (0)", id="tab-prompts"):
                 yield DataTable(id="dt-prompts")
 
     def on_mount(self) -> None:
@@ -62,11 +65,11 @@ class CapabilitySection(Widget):
             tab_pane_tools = tabs.query_one("#tab-tools", TabPane)
             tab_pane_res = tabs.query_one("#tab-resources", TabPane)
             tab_pane_prompts = tabs.query_one("#tab-prompts", TabPane)
-            tab_pane_tools.label = f"Tools ({self.tools_count})"          # type: ignore[assignment]
-            tab_pane_res.label = f"Resources ({self.resources_count})"    # type: ignore[assignment]
-            tab_pane_prompts.label = f"Prompts ({self.prompts_count})"    # type: ignore[assignment]
+            tab_pane_tools.label = f"Tools ({self.tools_count})"  # type: ignore[assignment]
+            tab_pane_res.label = f"Resources ({self.resources_count})"  # type: ignore[assignment]
+            tab_pane_prompts.label = f"Prompts ({self.prompts_count})"  # type: ignore[assignment]
         except Exception:
-            pass
+            logger.debug("Tab labels not yet available", exc_info=True)
 
     def watch_tools_count(self) -> None:
         self._update_tab_labels()

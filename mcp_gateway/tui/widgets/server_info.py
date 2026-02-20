@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
+
+logger = logging.getLogger(__name__)
 
 
 class ServerInfoWidget(Widget):
@@ -44,7 +48,7 @@ class ServerInfoWidget(Widget):
             self.query_one("#title-row", Static).update(self._render_title())
             self.query_one("#info-body", Static).update(self._render_body())
         except Exception:
-            pass  # widget not yet mounted
+            logger.debug("ServerInfoWidget not yet mounted", exc_info=True)
 
     # Watchers – auto-refresh on any reactive change
     def watch_server_name(self) -> None:
