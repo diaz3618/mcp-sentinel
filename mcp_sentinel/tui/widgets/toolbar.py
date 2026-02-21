@@ -26,9 +26,9 @@ class _ToolbarAction(Label):
         super().__init__(text, **kwargs)
         self._action_name = action
 
-    def on_click(self) -> None:
+    async def on_click(self) -> None:
         """Dispatch the bound action on the app."""
-        self.app.action(self._action_name)
+        await self.app.run_action(self._action_name)
 
 
 class _ToolbarSep(Label):
