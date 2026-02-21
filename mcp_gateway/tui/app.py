@@ -60,10 +60,6 @@ class GatewayApp(App):
         self._log_level = log_level
         self._server_thread: Optional[threading.Thread] = None
         self._uvicorn_server: Optional[uvicorn.Server] = None
-        # File-descriptor level backup for guaranteed terminal restore
-        self._saved_stdout_fd: Optional[int] = None
-        self._saved_stderr_fd: Optional[int] = None
-        self._devnull_fd: Optional[int] = None
 
     # ── Compose ─────────────────────────────────────────────────
 
@@ -149,17 +145,12 @@ class GatewayApp(App):
         # instead of corrupting the TUI terminal.
         event_log.start_capture()
 
-        # Additionally, redirect the OS-level stderr file descriptor
-        # (fd 2) to /dev/null so that low-level C library writes,
-        # tracebacks from daemon threads, and similar noise cannot
-        # reach the terminal.  Textual does NOT use stderr for
-        # rendering, so this is safe.
-        try:
-            self._saved_stderr_fd = os.dup(2)
-            self._devnull_fd = os.open(os.devnull, os.O_WRONLY)
-            os.dup2(self._devnull_fd, 2)
-        except OSError:
-            logger.debug("Could not redirect stderr fd", exc_info=True)
+        # NOTE: We intentionally do NOT redirect fd 2 (stderr).
+        # Textual's LinuxDriver renders the entire TUI via
+        # sys.__stderr__ (fd 2).  Redirecting it to /dev/null
+        # causes a completely blank screen.  The begin_capture_print()
+        # call above already intercepts Python-level print() calls;
+        # any remaining C-level noise on stderr is acceptable.
 
         # Load saved theme preference
         from mcp_gateway.tui.settings import load_settings
@@ -188,21 +179,6 @@ class GatewayApp(App):
         try:
             self.query_one(EventLogWidget).stop_capture()
         except Exception:
-            pass
-
-        # Restore stderr file descriptor
-        try:
-            if self._saved_stderr_fd is not None:
-                os.dup2(self._saved_stderr_fd, 2)
-                os.close(self._saved_stderr_fd)
-                self._saved_stderr_fd = None
-        except OSError:
-            pass
-        try:
-            if self._devnull_fd is not None:
-                os.close(self._devnull_fd)
-                self._devnull_fd = None
-        except OSError:
             pass
 
     # ── Server thread ───────────────────────────────────────────
