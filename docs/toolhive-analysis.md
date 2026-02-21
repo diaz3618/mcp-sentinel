@@ -43,18 +43,21 @@ This document identifies **17 portable features** organized by priority, with im
 ## Repos Inspected
 
 ### `repos/toolhive/` — Core Platform (Go)
+
 - **79 packages** across `cmd/` and `pkg/`
 - Four binaries: `thv`, `thv-operator`, `thv-proxyrunner`, `vmcp`
 - Key packages: `pkg/vmcp/` (aggregator), `pkg/transport/` (proxy), `pkg/auth/`, `pkg/authz/`, `pkg/audit/`, `pkg/telemetry/`
 - Design patterns: Factory, Middleware Chain, Interface Segregation, DDD (vmcp), DAG-based workflow execution
 
 ### `repos/toolhive-cloud-ui/` — Web Dashboard (Next.js 16)
+
 - Next.js App Router + React 19 + TypeScript + Tailwind + shadcn/ui
 - Auto-generated API client from OpenAPI spec
 - Features: MCP server catalog, AI chat playground with MCP tool integration, registry browser
 - MCP transports: SSE + StreamableHTTP via `@modelcontextprotocol/sdk`
 
 ### `repos/toolhive-studio/` — Desktop App (Electron 40)
+
 - Electron Forge + Vite + React 19 + TanStack Router/Query
 - Three-process model: Main (server management) → Preload (IPC bridge) → Renderer (UI)
 - Features: Server lifecycle management, polling-based status, feature flags, secrets management, AI chat playground
@@ -64,34 +67,34 @@ This document identifies **17 portable features** organized by priority, with im
 
 ## Current MCP-Gateway vs ToolHive
 
-| Area | ToolHive (`vmcp`) | MCP-Gateway | Status |
-|------|-------------------|-------------|--------|
-| Backend: stdio | ✅ (container stdio + proxy) | ✅ (subprocess stdio via `mcp` SDK) | **Parity** |
-| Backend: SSE | ✅ (transparent proxy) | ✅ (via `sse_client`) | **Parity** |
-| Backend: streamable-http | ✅ (transparent proxy) | ❌ | **Gap** |
-| Capability aggregation | ✅ (tools, resources, prompts) | ✅ (tools, resources, prompts) | **Parity** |
-| Conflict resolution | 3 strategies: prefix, priority, manual | First-wins only (duplicate ignored + warning) | **Gap** |
-| Tool filtering | Allow/deny lists per backend | None | **Gap** |
-| Tool renaming | Per-tool rename + description override | None | **Gap** |
-| Composite workflows | DAG-based multi-step with elicitation | None | **Gap** |
-| Optimizer (find_tool/call_tool) | Semantic search, token savings metrics | None | **Gap** |
-| Incoming auth | OIDC/OAuth2, anonymous, local JWT | None | **Gap** |
-| Outgoing auth | Token exchange, header injection | None | **Gap** |
-| Authorization | Cedar policies, HTTP-based PDP | None | **Gap** |
-| Audit logging | NIST SP 800-53 compliant events | None | **Gap** |
-| OpenTelemetry tracing | Full OTLP + Jaeger + DataDog | None | **Gap** |
-| Prometheus metrics | `/metrics` endpoint | None | **Gap** |
-| Health checks | MCP ping protocol, circuit breaker | None | **Gap** |
-| Session management | Per-session routing tables, affinity | Stateless forwarding | **Gap** |
-| Secret management | Encrypted AES-256-GCM, 1Password, env | Plaintext in config.json | **Gap** |
-| Config format | YAML with full schema, versioned | JSON with minimal validation | **Gap** |
-| Config export/import | RunConfig portable format | No | **Gap** |
-| Server groups | Logical collections | No | **Gap** |
-| Registry | Curated catalog with provenance | No | **Gap** |
-| Client auto-config | Claude Desktop, Cursor, VS Code | No | **Gap** |
-| TUI monitoring | No (CLI-only) | ✅ (Textual TUI) | **Advantage** |
-| Middleware chain | 11 composable middleware types | Direct forwarding | **Gap** |
-| Backend status model | Phase, conditions, health status | Basic connected/failed count | **Gap** |
+| Implement | Area | ToolHive (`vmcp`) | MCP-Gateway | Status |
+| --------- |------|-------------------|-------------|--------|
+| N/A | Backend: stdio | ✅ (container stdio + proxy) | ✅ (subprocess stdio via `mcp` SDK) | **Parity** |
+| N/A | Backend: SSE | ✅ (transparent proxy) | ✅ (via `sse_client`) | **Parity** |
+| Yes | Backend: streamable-http | ✅ (transparent proxy) | ❌ | **Gap** |
+| N/A | Capability aggregation | ✅ (tools, resources, prompts) | ✅ (tools, resources, prompts) | **Parity** |
+| Yes | Conflict resolution | 3 strategies: prefix, priority, manual | First-wins only (duplicate ignored + warning) | **Gap** |
+| Yes | Tool filtering | Allow/deny lists per backend | None | **Gap** |
+| Yes | Tool renaming | Per-tool rename + description override | None | **Gap** |
+| Yes | Composite workflows | DAG-based multi-step with elicitation | None | **Gap** |
+| Yes | Optimizer (find_tool/call_tool) | Semantic search, token savings metrics | None | **Gap** |
+| Explain | Incoming auth | OIDC/OAuth2, anonymous, local JWT | None | **Gap** |
+| Explain | Outgoing auth | Token exchange, header injection | None | **Gap** |
+| Explain | Authorization | Cedar policies, HTTP-based PDP | None | **Gap** |
+| Explain | Audit logging | NIST SP 800-53 compliant events | None | **Gap** |
+| Explain | OpenTelemetry tracing | Full OTLP + Jaeger + DataDog | None | **Gap** |
+| Yes | Prometheus metrics | `/metrics` endpoint | None | **Gap** |
+| Yes | Health checks | MCP ping protocol, circuit breaker | None | **Gap** |
+| Yes | Session management | Per-session routing tables, affinity | Stateless forwarding | **Gap** |
+| Yes | Secret management | Encrypted AES-256-GCM, 1Password, env | Plaintext in config.json | **Gap** |
+| Yes | Config format | YAML with full schema, versioned | JSON with minimal validation | **Gap** |
+| Yes | Config export/import | RunConfig portable format | No | **Gap** |
+| Explain | Server groups | Logical collections | No | **Gap** |
+| Explains | Registry | Curated catalog with provenance | No | **Gap** |
+| Explain | Client auto-config | Claude Desktop, Cursor, VS Code | No | **Gap** |
+| N/A | TUI monitoring | No (CLI-only) | ✅ (Textual TUI) | **Advantage** |
+| Yes | Middleware chain | 11 composable middleware types | Direct forwarding | **Gap** |
+| Yes | Backend status model | Phase, conditions, health status | Basic connected/failed count | **Gap** |
 
 ---
 
@@ -126,17 +129,20 @@ This document identifies **17 portable features** organized by priority, with im
 **What**: Instead of silently ignoring duplicate capability names, offer configurable strategies.
 
 **ToolHive implementation** (`pkg/vmcp/aggregator/`):
+
 - **Prefix strategy**: Auto-prefix with backend name → `{backend}_toolname`
 - **Priority strategy**: Configurable backend ordering, first wins
 - **Manual mapping**: Explicit name→backend mappings in config
 
 **MCP-Gateway touchpoint**: `mcp_gateway/bridge/capability_registry.py` line 42 already has:
+
 ```python
 # TODO: Make conflict resolution strategy configurable
 # (for example, auto-prefixing).
 ```
 
 **Config addition** (`config.json`):
+
 ```json
 {
   "conflict_resolution": {
@@ -155,10 +161,12 @@ Strategies: `"first_wins"` (current behavior), `"prefix"` (auto-prefix with serv
 **What**: Per-server allow/deny lists to control which tools are exposed.
 
 **ToolHive implementation** (`pkg/vmcp/aggregator/`):
+
 - `allowList` / `denyList` per workload
 - Applied during capability discovery before aggregation
 
 **MCP-Gateway implementation**: Add per-server config:
+
 ```json
 {
   "mcpServers": {
@@ -182,6 +190,7 @@ Strategies: `"first_wins"` (current behavior), `"prefix"` (auto-prefix with serv
 **What**: Per-backend and per-operation timeout configuration instead of hardcoded constants.
 
 **Current hardcoded values** (`mcp_gateway/constants.py`):
+
 ```python
 SSE_LOCAL_START_DELAY = 5
 MCP_INIT_TIMEOUT = 15
@@ -189,6 +198,7 @@ CAP_FETCH_TIMEOUT = 10.0
 ```
 
 **Config addition**:
+
 ```json
 {
   "timeouts": {
@@ -219,6 +229,7 @@ CAP_FETCH_TIMEOUT = 10.0
 **What**: Periodic MCP `ping` to each backend with status tracking.
 
 **ToolHive implementation** (`pkg/vmcp/health/`):
+
 - Health monitor with configurable interval
 - States: `healthy`, `degraded`, `unhealthy`
 - Circuit breaker: after N failures, stop listing tools from that backend
@@ -227,6 +238,7 @@ CAP_FETCH_TIMEOUT = 10.0
 **ToolHive Studio pattern**: Composable polling engine with `pollServerStatus`, `pollServerUntilStable` — transition state detection with auto-resume polling.
 
 **MCP-Gateway implementation**:
+
 - Background `asyncio.Task` pinging backends every N seconds
 - Per-backend status: `healthy | degraded | unhealthy | unknown`
 - Display in TUI's `BackendStatus` widget (already exists)
@@ -239,10 +251,12 @@ CAP_FETCH_TIMEOUT = 10.0
 **What**: Per-tool name aliasing and description customization.
 
 **ToolHive implementation** (`pkg/vmcp/aggregator/`):
+
 - `renames` map: `{original_name: new_name}`
 - `description_overrides` map: `{tool_name: "custom description"}`
 
 **Config addition**:
+
 ```json
 {
   "mcpServers": {
@@ -267,12 +281,14 @@ CAP_FETCH_TIMEOUT = 10.0
 **What**: Structured JSON log events for every MCP operation.
 
 **ToolHive implementation** (`pkg/audit/`):
+
 - NIST SP 800-53 compliant event structure
 - Fields: timestamp, event_type, source, target_backend, method, tool_name, outcome, latency_ms, error
 - Middleware-based collection
 - Optional file output + log rotation
 
 **MCP-Gateway implementation**:
+
 - Python `logging` with JSON formatter (or `structlog`)
 - Log at the forwarding layer (`bridge/forwarder.py`)
 - Structured fields via `extra` dict
@@ -285,10 +301,12 @@ CAP_FETCH_TIMEOUT = 10.0
 **What**: Composable request processing pipeline for the proxy layer.
 
 **ToolHive implementation** (`pkg/transport/middleware/`):
+
 - 11 middleware types: auth, authz, audit, telemetry, recovery, tool filter, tool call filter, usage metrics, parser, header forwarding, backend enrichment
 - Chain pattern: each middleware wraps the next handler
 
 **MCP-Gateway implementation**:
+
 - Python async middleware chain wrapping `forward_request()`
 - Starlette already supports middleware natively for HTTP layer
 - MCP-level middleware for tool call processing:
@@ -316,12 +334,14 @@ async def execute_chain(middlewares: list, request, handler):
 **What**: Instead of exposing 100+ tools to the LLM, expose two meta-tools.
 
 **ToolHive implementation** (`pkg/vmcp/optimizer/`):
+
 - `find_tool`: Semantic search over tool names + descriptions, returns top-N matches
 - `call_tool`: Dynamic invocation by name, forwards to correct backend
 - SQLite-backed tool store for search
 - Token usage metrics: baseline vs returned token savings
 
 **MCP-Gateway implementation**:
+
 - In-memory tool index (name + description searchable)
 - `find_tool(query, limit)` → returns matching tool definitions
 - `call_tool(name, args)` → resolves backend + forwards
@@ -334,12 +354,14 @@ async def execute_chain(middlewares: list, request, handler):
 **What**: Inject auth headers when calling backend servers.
 
 **ToolHive implementation** (`pkg/vmcp/auth/`):
+
 - Two-boundary auth: incoming client validation + outgoing backend credentials
 - Per-backend header injection (`Authorization: Bearer <token>`)
 - Token exchange (RFC 8693)
 - Token caching (memory, Redis)
 
 **MCP-Gateway implementation** (simplified):
+
 ```json
 {
   "mcpServers": {
@@ -363,6 +385,7 @@ async def execute_chain(middlewares: list, request, handler):
 **What**: Rich status model beyond connected/failed counts.
 
 **ToolHive implementation** (`pkg/vmcp/status/`):
+
 - Phases: `Pending`, `Initializing`, `Ready`, `Degraded`, `Failed`, `ShuttingDown`
 - Conditions: timestamped status messages per backend
 - Aggregate gateway status derived from backend states
@@ -370,6 +393,7 @@ async def execute_chain(middlewares: list, request, handler):
 **ToolHive Studio pattern**: Server cards with color-coded status badges (🟢 running, 🔴 stopped, 🟡 transition) + polling-based status updates.
 
 **MCP-Gateway implementation**:
+
 - `BackendStatus` dataclass with phase, last_seen, error_count, latency_ms
 - Update from health checks
 - Display rich status in TUI (color-coded, phase + conditions)
@@ -381,6 +405,7 @@ async def execute_chain(middlewares: list, request, handler):
 **What**: Per-MCP-session capability tables.
 
 **ToolHive implementation** (`pkg/vmcp/router/`):
+
 - Per-session routing tables created on `initialize`
 - Session affinity: tool calls routed to same backend within session
 - Lazy discovery: capabilities fetched on first use per session
@@ -392,6 +417,7 @@ async def execute_chain(middlewares: list, request, handler):
 **What**: Logical grouping of backend servers.
 
 **ToolHive implementation** (`pkg/groups/`):
+
 - Named groups (e.g., "development", "production")
 - Multiple vmcp endpoints serving different groups
 - Group-level operations (start/stop all in group)
@@ -399,6 +425,7 @@ async def execute_chain(middlewares: list, request, handler):
 **ToolHive Studio pattern**: Server groups in the sidebar, group-based filtering.
 
 **Config addition**:
+
 ```json
 {
   "groups": {
@@ -413,27 +440,32 @@ async def execute_chain(middlewares: list, request, handler):
 ## P3 — Future Considerations
 
 ### 13. OpenTelemetry Integration
+
 - Python `opentelemetry-api` + `opentelemetry-sdk`
 - Instrument `forward_request()` with spans
 - OTLP exporter for traces, optional Prometheus for metrics
 
 ### 14. Incoming Authentication (JWT/OIDC)
+
 - Starlette middleware validating JWT on SSE connections
 - API key or Bearer token validation
 - OIDC discovery for public key retrieval
 
 ### 15. Composite Tool Workflows
+
 - YAML workflow definitions with DAG-based execution
 - Steps reference tools from different backends
 - Conditional execution + template expansion
 - `asyncio.gather()` for parallel steps
 
 ### 16. Streamable HTTP Transport
+
 - Support the new MCP streamable-http transport for backends
 - Add alongside `stdio` and `sse` in `ClientManager`
 - SSE is being deprecated in the MCP spec
 
 ### 17. Secret Management
+
 - `$ENV_VAR` syntax in config values (replace at load time)
 - Optional encrypted secrets file
 - `cryptography` library for AES-256-GCM
@@ -468,6 +500,7 @@ These ToolHive features are tied to Go/container/K8s architecture and do **not**
 The Cloud UI and Studio provide excellent UX patterns that could enhance MCP-Gateway's Textual TUI:
 
 ### From Cloud UI
+
 | Pattern | TUI Adaptation |
 |---------|----------------|
 | Grid ↔ List view toggle | Compact (1-line per server) vs. expanded (multi-line detail) view |
@@ -480,6 +513,7 @@ The Cloud UI and Studio provide excellent UX patterns that could enhance MCP-Gat
 | Toast notifications | `app.notify()` calls for copy, connect, error events |
 
 ### From Studio
+
 | Pattern | TUI Adaptation |
 |---------|----------------|
 | Server cards with status badges (🟢 🔴 🟡) | Color-coded status column in DataTable |
