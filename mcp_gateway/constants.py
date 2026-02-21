@@ -1,7 +1,7 @@
 """Shared constants for MCP Sentinel."""
 
 SERVER_NAME = "MCP Sentinel"
-SERVER_VERSION = "4.0.0"
+SERVER_VERSION = "0.1.0"
 AUTHOR = "diaz3618"
 
 # Network defaults

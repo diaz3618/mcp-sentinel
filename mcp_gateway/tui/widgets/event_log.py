@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from rich.text import Text
+from textual import events
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import RichLog
@@ -23,13 +24,29 @@ _STAGE_COLOURS: dict[str, str] = {
 }
 
 
+class _CaptureRichLog(RichLog):
+    """RichLog subclass that captures print() output.
+
+    Follows the canonical Textual pattern:
+    ``widget.begin_capture_print()`` routes stray ``print()`` calls
+    to an ``on_print`` handler so they appear inside the Events panel
+    instead of corrupting the terminal.
+    """
+
+    def on_print(self, event: events.Print) -> None:  # noqa: D401
+        """Receive a captured print event and write it to the log."""
+        text = event.text.rstrip("\n")
+        if text:
+            self.write(Text(text, style="dim"))
+
+
 class EventLogWidget(Widget):
     """Real-time scrolling log of gateway lifecycle events."""
 
     BORDER_TITLE = "Events"
 
     def compose(self) -> ComposeResult:
-        yield RichLog(
+        yield _CaptureRichLog(
             highlight=True,
             markup=True,
             wrap=True,
@@ -38,8 +55,21 @@ class EventLogWidget(Widget):
         )
 
     @property
-    def log_widget(self) -> RichLog:
-        return self.query_one("#event-rich-log", RichLog)
+    def log_widget(self) -> _CaptureRichLog:
+        return self.query_one("#event-rich-log", _CaptureRichLog)
+
+    # ── Capture control ─────────────────────────────────────────
+
+    def start_capture(self) -> None:
+        """Begin capturing ``print()`` output into this log."""
+        self.log_widget.begin_capture_print()
+
+    def stop_capture(self) -> None:
+        """Stop capturing ``print()`` output."""
+        try:
+            self.log_widget.end_capture_print()
+        except Exception:
+            pass
 
     # ── Public API ──────────────────────────────────────────────
 

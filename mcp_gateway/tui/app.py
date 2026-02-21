@@ -5,14 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sys
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import uvicorn
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
 from textual.widgets import Footer, Header
 
 from mcp_gateway.constants import (
@@ -78,6 +78,48 @@ class GatewayApp(App):
         yield CapabilitySection(id="cap-section")
         yield Footer()
 
+    # ── System commands (Command Palette) ───────────────────────
+
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """Extend the command palette with MCP Sentinel commands."""
+        yield from super().get_system_commands(screen)
+        yield SystemCommand(
+            title="Show Server Details",
+            help="Display configuration, log file, and log level",
+            callback=self._show_server_details,
+        )
+        yield SystemCommand(
+            title="Show Connection Info",
+            help="Display SSE endpoint URL and backend status",
+            callback=self._show_connection_info,
+        )
+        yield SystemCommand(
+            title="Cycle Theme",
+            help="Switch to the next enabled theme",
+            callback=self.action_next_theme,
+        )
+
+    def _show_server_details(self) -> None:
+        """Show server config details via notification."""
+        srv = self.query_one(ServerInfoWidget)
+        lines = [
+            f"[b]Config file:[/b]  {srv.config_file}",
+            f"[b]Log file:[/b]    {srv.log_file}",
+            f"[b]Log level:[/b]   {srv.log_level}",
+        ]
+        self.notify("\n".join(lines), title="Server Details", timeout=8)
+
+    def _show_connection_info(self) -> None:
+        """Show connection info via notification."""
+        srv = self.query_one(ServerInfoWidget)
+        bk = self.query_one(BackendStatusWidget)
+        lines = [
+            f"[b]SSE URL:[/b]    {srv.sse_url}",
+            f"[b]Backends:[/b]   {bk.connected}/{bk.total} connected",
+            f"[b]Status:[/b]     {srv.status_text}",
+        ]
+        self.notify("\n".join(lines), title="Connection Info", timeout=8)
+
     # ── Lifecycle ───────────────────────────────────────────────
 
     def on_mount(self) -> None:
@@ -101,11 +143,11 @@ class GatewayApp(App):
         set_status_callback(self._on_status_from_server)
 
         # --- Stdout / stderr isolation ---
-        # Use Textual's native print-capture so that any stray print()
-        # calls from library code are intercepted and turned into Print
-        # events (handled by on_print below) instead of corrupting the
-        # TUI display.
-        self.begin_capture_print()
+        # Use the canonical Textual pattern: call begin_capture_print()
+        # on the RichLog widget inside EventLogWidget so that stray
+        # print() calls from libraries/uvicorn appear in the Events panel
+        # instead of corrupting the TUI terminal.
+        event_log.start_capture()
 
         # Additionally, redirect the OS-level stderr file descriptor
         # (fd 2) to /dev/null so that low-level C library writes,
@@ -144,7 +186,7 @@ class GatewayApp(App):
 
         # Stop capturing print()
         try:
-            self.end_capture_print()
+            self.query_one(EventLogWidget).stop_capture()
         except Exception:
             pass
 
@@ -162,12 +204,6 @@ class GatewayApp(App):
                 self._devnull_fd = None
         except OSError:
             pass
-
-    def on_print(self, event: Any) -> None:
-        """Handle captured print() calls — discard them silently."""
-        # Textual's begin_capture_print() turns print() into Print
-        # events.  We swallow them to prevent terminal corruption.
-        pass
 
     # ── Server thread ───────────────────────────────────────────
 

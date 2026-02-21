@@ -1,6 +1,6 @@
 [project]
 name = "mcp-sentinel"
-version = "4.0.0"
+version = "0.1.0"
 description = "A central gateway for aggregating MCP server capabilities via SSE"
 readme = "README.md"
 requires-python = ">=3.10"
