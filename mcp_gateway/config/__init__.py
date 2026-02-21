@@ -1,4 +1,4 @@
-"""Configuration loading and validation for MCP Gateway."""
+"""Configuration loading and validation for MCP Sentinel."""
 
 from mcp_gateway.config.loader import load_and_validate_config
 

@@ -1,4 +1,4 @@
-"""Custom Textual messages for gateway status updates."""
+"""Custom Textual messages for MCP Sentinel status updates."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from textual.message import Message
 
 
 class StatusUpdate(Message):
-    """Posted when the gateway lifespan emits a status change."""
+    """Posted when the server lifespan emits a status change."""
 
     def __init__(
         self,

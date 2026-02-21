@@ -1,5 +1,5 @@
-"""TUI screen definitions.
+"""TUI screen definitions."""
 
-The main dashboard is composed directly in ``GatewayApp.compose()``.
-This subpackage is reserved for future modal / detail screens.
-"""
+from mcp_gateway.tui.screens.theme_picker import ThemeScreen
+
+__all__ = ["ThemeScreen"]

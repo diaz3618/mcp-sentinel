@@ -37,11 +37,16 @@ class _CaptureRichLog(RichLog):
         """Receive a captured print event and write it to the log."""
         text = event.text.rstrip("\n")
         if text:
-            self.write(Text(text, style="dim"))
+            ts = datetime.now().strftime("%H:%M:%S")
+            line = Text.assemble(
+                (f"[{ts}] ", "dim"),
+                (text, "dim italic"),
+            )
+            self.write(line)
 
 
 class EventLogWidget(Widget):
-    """Real-time scrolling log of gateway lifecycle events."""
+    """Real-time scrolling log of server lifecycle events."""
 
     BORDER_TITLE = "Events"
 
@@ -61,14 +66,27 @@ class EventLogWidget(Widget):
     # ── Capture control ─────────────────────────────────────────
 
     def start_capture(self) -> None:
-        """Begin capturing ``print()`` output into this log."""
-        self.log_widget.begin_capture_print()
+        """Begin capturing ``print()`` output into this log.
+
+        Uses ``call_after_refresh`` to ensure the widget tree is fully
+        composed before activating the capture, which avoids a race
+        condition where the ``RichLog`` widget is not yet associated with
+        the running ``App`` instance.
+        """
+
+        def _begin() -> None:
+            try:
+                self.log_widget.begin_capture_print()
+            except Exception:  # noqa: BLE001
+                pass
+
+        self.call_after_refresh(_begin)
 
     def stop_capture(self) -> None:
         """Stop capturing ``print()`` output."""
         try:
             self.log_widget.end_capture_print()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # ── Public API ──────────────────────────────────────────────

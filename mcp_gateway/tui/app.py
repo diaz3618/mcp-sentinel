@@ -23,6 +23,7 @@ from mcp_gateway.constants import (
     SERVER_VERSION,
 )
 from mcp_gateway.tui.events import CapabilitiesReady, ServerStopped, StatusUpdate
+from mcp_gateway.tui.screens.theme_picker import ThemeScreen
 from mcp_gateway.tui.widgets.backend_status import BackendStatusWidget
 from mcp_gateway.tui.widgets.capability_tables import CapabilitySection
 from mcp_gateway.tui.widgets.event_log import EventLogWidget
@@ -39,11 +40,15 @@ class GatewayApp(App):
     CSS_PATH = "gateway.tcss"
 
     BINDINGS = [
+        # ── App ────────────────────────────────────────────────
         Binding("q", "quit", "Quit", priority=True),
+        # ── Navigation ─────────────────────────────────────────
         Binding("t", "show_tools", "Tools"),
         Binding("r", "show_resources", "Resources"),
         Binding("p", "show_prompts", "Prompts"),
-        Binding("n", "next_theme", "Theme"),
+        # ── Theme ──────────────────────────────────────────────
+        Binding("n", "next_theme", "Next Theme"),
+        Binding("T", "open_theme_picker", "Themes", key_display="shift+t"),
     ]
 
     # ── Construction ────────────────────────────────────────────
@@ -79,15 +84,41 @@ class GatewayApp(App):
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
         """Extend the command palette with MCP Sentinel commands."""
         yield from super().get_system_commands(screen)
+
+        # ── Server ─────────────────────────────────────────────
         yield SystemCommand(
             title="Show Server Details",
-            help="Display configuration, log file, and log level",
+            help="Configuration file, log file, and log level",
             callback=self._show_server_details,
         )
         yield SystemCommand(
             title="Show Connection Info",
-            help="Display SSE endpoint URL and backend status",
+            help="SSE endpoint URL and backend status",
             callback=self._show_connection_info,
+        )
+
+        # ── Navigation ─────────────────────────────────────────
+        yield SystemCommand(
+            title="Show Tools Tab",
+            help="Switch capability tables to the Tools tab",
+            callback=self.action_show_tools,
+        )
+        yield SystemCommand(
+            title="Show Resources Tab",
+            help="Switch capability tables to the Resources tab",
+            callback=self.action_show_resources,
+        )
+        yield SystemCommand(
+            title="Show Prompts Tab",
+            help="Switch capability tables to the Prompts tab",
+            callback=self.action_show_prompts,
+        )
+
+        # ── Appearance ─────────────────────────────────────────
+        yield SystemCommand(
+            title="Open Theme Picker",
+            help="Browse and preview all available themes",
+            callback=self.action_open_theme_picker,
         )
         yield SystemCommand(
             title="Cycle Theme",
@@ -130,7 +161,7 @@ class GatewayApp(App):
         event_log = self.query_one(EventLogWidget)
         event_log.add_event(
             "🚀 Initialization",
-            "Gateway TUI started — launching server…",
+            "Sentinel TUI started — launching server…",
         )
 
         # Register the TUI callback so lifespan status updates reach us
@@ -404,3 +435,17 @@ class GatewayApp(App):
         save_settings(settings)
 
         self.notify(f"Theme: {next_theme}", timeout=2)
+
+    def action_open_theme_picker(self) -> None:
+        """Open the modal theme picker screen."""
+
+        def _on_theme_selected(theme_name: str | None) -> None:
+            if theme_name is not None:
+                from mcp_gateway.tui.settings import load_settings, save_settings
+
+                settings = load_settings()
+                settings["theme"] = theme_name
+                save_settings(settings)
+                self.notify(f"Theme: {theme_name}", timeout=2)
+
+        self.push_screen(ThemeScreen(), _on_theme_selected)

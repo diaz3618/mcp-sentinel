@@ -59,15 +59,17 @@ class CapabilitySection(Widget):
     # ── Tab label updates ───────────────────────────────────────
 
     def _update_tab_labels(self) -> None:
-        """Re-label tabs with current counts."""
+        """Re-label tabs with current counts.
+
+        Uses ``TabbedContent.get_tab()`` to obtain the actual ``Tab``
+        widget (the clickable button) rather than setting
+        ``TabPane.label`` which does not propagate to the visible tab.
+        """
         try:
             tabs = self.query_one("#cap-tabs", TabbedContent)
-            tab_pane_tools = tabs.query_one("#tab-tools", TabPane)
-            tab_pane_res = tabs.query_one("#tab-resources", TabPane)
-            tab_pane_prompts = tabs.query_one("#tab-prompts", TabPane)
-            tab_pane_tools.label = f"Tools ({self.tools_count})"  # type: ignore[assignment]
-            tab_pane_res.label = f"Resources ({self.resources_count})"  # type: ignore[assignment]
-            tab_pane_prompts.label = f"Prompts ({self.prompts_count})"  # type: ignore[assignment]
+            tabs.get_tab("tab-tools").label = f"Tools ({self.tools_count})"
+            tabs.get_tab("tab-resources").label = f"Resources ({self.resources_count})"
+            tabs.get_tab("tab-prompts").label = f"Prompts ({self.prompts_count})"
         except Exception:
             logger.debug("Tab labels not yet available", exc_info=True)
 

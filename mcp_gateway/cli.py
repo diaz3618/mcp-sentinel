@@ -104,7 +104,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.no_tui:
-        # Plain console mode — run Uvicorn directly on the main thread
+        # Plain console mode — run Uvicorn directly on the main thread.
         # Install a signal handler so the first Ctrl+C triggers a
         # graceful shutdown and the second forces an exit.
         _force_exit_count = 0
@@ -114,8 +114,11 @@ def main() -> None:
             _force_exit_count += 1
             if _force_exit_count >= 2:
                 module_logger.info("Force exit requested (double Ctrl+C).")
+                # Restore default handler and re-raise for clean exit
+                signal.signal(signal.SIGINT, signal.SIG_DFL)
                 os._exit(1)
             module_logger.info("Ctrl+C received — shutting down…")
+            print("\n[Ctrl+C] Shutting down gracefully… (press again to force)")
             if uvicorn_svr_inst is not None:
                 uvicorn_svr_inst.should_exit = True
 
@@ -196,19 +199,36 @@ def main() -> None:
             )
             sys.exit(1)
         finally:
-            # Restore terminal state unconditionally
+            # Restore terminal state unconditionally.
+            # Use TCSANOW for immediate restoration — TCSADRAIN can hang
+            # if there is pending output from the TUI driver.
             if _saved_termios is not None:
                 try:
                     import termios
 
                     termios.tcsetattr(
                         sys.stdin.fileno(),
-                        termios.TCSADRAIN,
+                        termios.TCSANOW,
                         _saved_termios,
                     )
                 except Exception:
                     pass
+
+            # Belt-and-suspenders: ask stty to normalise the terminal
+            # in case Textual left it in raw/noecho mode.
+            try:
+                os.system("stty sane 2>/dev/null")
+            except Exception:
+                pass
+
             # Ensure Python-level streams point back to the originals
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
+
+            # Print a newline so the shell prompt appears cleanly
+            try:
+                print()
+            except Exception:
+                pass
+
             module_logger.info("%s application finished.", SERVER_NAME)

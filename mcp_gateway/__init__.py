@@ -1,7 +1,7 @@
 """
-MCP Gateway - A central gateway for aggregating MCP server capabilities.
+MCP Sentinel - A central gateway for aggregating MCP server capabilities.
 
-MCP Gateway connects to multiple backend MCP servers (stdio/SSE) and exposes
+MCP Sentinel connects to multiple backend MCP servers (stdio/SSE) and exposes
 their aggregated capabilities (tools, resources, prompts) through a unified
 SSE endpoint.
 """

@@ -1,10 +1,10 @@
-"""Custom exception classes for MCP Gateway."""
+"""Custom exception classes for MCP Sentinel."""
 
 from typing import Optional
 
 
 class GatewayBaseError(Exception):
-    """Base class for all custom exceptions in MCP Gateway."""
+    """Base class for all custom exceptions in MCP Sentinel."""
 
     pass
 

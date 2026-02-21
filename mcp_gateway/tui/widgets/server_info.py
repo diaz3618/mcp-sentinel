@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ServerInfoWidget(Widget):
-    """Displays gateway server metadata in a compact panel."""
+    """Displays server metadata in a compact panel."""
 
     server_name: reactive[str] = reactive("MCP Sentinel")
     server_version: reactive[str] = reactive("")
