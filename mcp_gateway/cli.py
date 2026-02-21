@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import logging
 import os
+import signal
 import sys
 from typing import Optional
 
@@ -104,6 +105,22 @@ def main() -> None:
 
     if args.no_tui:
         # Plain console mode — run Uvicorn directly on the main thread
+        # Install a signal handler so the first Ctrl+C triggers a
+        # graceful shutdown and the second forces an exit.
+        _force_exit_count = 0
+
+        def _sigint_handler(sig: int, frame: object) -> None:
+            nonlocal _force_exit_count
+            _force_exit_count += 1
+            if _force_exit_count >= 2:
+                module_logger.info("Force exit requested (double Ctrl+C).")
+                os._exit(1)
+            module_logger.info("Ctrl+C received — shutting down…")
+            if uvicorn_svr_inst is not None:
+                uvicorn_svr_inst.should_exit = True
+
+        signal.signal(signal.SIGINT, _sigint_handler)
+
         try:
             asyncio.run(
                 main_async(
@@ -113,7 +130,10 @@ def main() -> None:
                 )
             )
         except KeyboardInterrupt:
-            module_logger.info("%s main program interrupted by KeyboardInterrupt.", SERVER_NAME)
+            module_logger.info(
+                "%s main program interrupted by KeyboardInterrupt.",
+                SERVER_NAME,
+            )
         except SystemExit as e_sys_exit:
             if e_sys_exit.code is None or e_sys_exit.code == 0:
                 module_logger.info(
@@ -137,7 +157,17 @@ def main() -> None:
         finally:
             module_logger.info("%s application finished.", SERVER_NAME)
     else:
-        # TUI mode (default) — Textual owns the main thread
+        # TUI mode (default) — Textual owns the main thread.
+        # Save terminal state so we can guarantee restoration even
+        # if the TUI crashes or misbehaves during shutdown.
+        _saved_termios = None
+        try:
+            import termios
+
+            _saved_termios = termios.tcgetattr(sys.stdin.fileno())
+        except Exception:
+            pass  # stdin may not be a real terminal (CI, pipe, etc.)
+
         try:
             from mcp_gateway.tui.app import GatewayApp
 
@@ -155,7 +185,9 @@ def main() -> None:
             )
             sys.exit(1)
         except KeyboardInterrupt:
-            module_logger.info("%s TUI interrupted by KeyboardInterrupt.", SERVER_NAME)
+            module_logger.info(
+                "%s TUI interrupted by KeyboardInterrupt.", SERVER_NAME
+            )
         except Exception as e_fatal:
             module_logger.exception(
                 "%s TUI encountered an uncaught fatal error: %s",
@@ -164,4 +196,19 @@ def main() -> None:
             )
             sys.exit(1)
         finally:
+            # Restore terminal state unconditionally
+            if _saved_termios is not None:
+                try:
+                    import termios
+
+                    termios.tcsetattr(
+                        sys.stdin.fileno(),
+                        termios.TCSADRAIN,
+                        _saved_termios,
+                    )
+                except Exception:
+                    pass
+            # Ensure Python-level streams point back to the originals
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
             module_logger.info("%s application finished.", SERVER_NAME)

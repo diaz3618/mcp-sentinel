@@ -15,7 +15,10 @@ BASE_LOG_CFG = {
     "disable_existing_loggers": False,
     "formatters": {
         "simple_file": {
-            "format": ("%(asctime)s - %(name)25s:%(lineno)-4d - " "%(levelname)-7s - %(message)s"),
+            "format": (
+                "%(asctime)s - %(name)25s:%(lineno)-4d - "
+                "%(levelname)-7s - %(message)s"
+            ),
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -87,7 +90,7 @@ BASE_LOG_CFG = {
 }
 
 
-def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
+def setup_logging(log_lvl_str: str, *, quiet: bool = False) -> Tuple[str, str]:
     """
     Set up the logging system.
 
@@ -96,6 +99,7 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
 
     Args:
         log_lvl_str: The desired log level string (e.g., 'debug', 'info').
+        quiet: If *True*, suppress all ``print()`` output (TUI mode).
 
     Returns:
         A tuple of (log_file_path, validated_log_level).
@@ -103,7 +107,8 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
     log_lvl_valid = log_lvl_str.upper()
     valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     if log_lvl_valid not in valid_levels:
-        print(f"Warning: invalid log level '{log_lvl_str}'. Using 'INFO'.")
+        if not quiet:
+            print(f"Warning: invalid log level '{log_lvl_str}'. Using 'INFO'.")
         log_lvl_valid = "INFO"
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -137,15 +142,22 @@ def setup_logging(log_lvl_str: str) -> Tuple[str, str]:
     log_cfg["loggers"]["uvicorn.access"]["level"] = (
         "INFO" if log_lvl_valid == "DEBUG" else "WARNING"
     )
-    log_cfg["root"]["level"] = log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
+    log_cfg["root"]["level"] = (
+        log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
+    )
 
     try:
         logging.config.dictConfig(log_cfg)
-        print(f"Logging initialized. File log level: {log_lvl_valid}, " f"log file: {log_fpath}")
+        if not quiet:
+            print(
+                f"Logging initialized. File log level: {log_lvl_valid}, "
+                f"log file: {log_fpath}"
+            )
     except Exception as e_log_cfg:
-        print(
-            f"Error applying logging configuration: {e_log_cfg}",
-            file=sys.stderr,
-        )
+        if not quiet:
+            print(
+                f"Error applying logging configuration: {e_log_cfg}",
+                file=sys.stderr,
+            )
 
     return log_fpath, log_lvl_valid

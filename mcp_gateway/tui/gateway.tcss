@@ -1,4 +1,4 @@
-/* MCP Gateway TUI Theme */
+/* MCP Sentinel TUI Theme */
 
 /* ── Global ─────────────────────────────────────────────────────── */
 
@@ -17,6 +17,9 @@ Screen {
     width: 38;
     min-width: 30;
     height: 100%;
+    /* Push BackendStatusWidget to the bottom so it aligns with the
+       Events log box in the main area. */
+    align: left bottom;
 }
 
 #main-area {
@@ -27,7 +30,7 @@ Screen {
 
 ServerInfoWidget {
     height: auto;
-    max-height: 14;
+    max-height: 10;
     border: round $accent;
     padding: 0 1;
     margin: 0 0 1 0;
@@ -57,6 +60,7 @@ BackendStatusWidget {
     max-height: 6;
     border: round $accent;
     padding: 0 1;
+    dock: bottom;
 }
 
 BackendStatusWidget #backend-title {

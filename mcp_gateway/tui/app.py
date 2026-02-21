@@ -1,10 +1,11 @@
-"""MCP Gateway Textual TUI application."""
+"""MCP Sentinel Textual TUI application."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
+import sys
 import threading
 from typing import Any, Dict, Optional
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class GatewayApp(App):
-    """Textual TUI for the MCP Gateway server."""
+    """Textual TUI for the MCP Sentinel server."""
 
     TITLE = f"{SERVER_NAME} v{SERVER_VERSION}"
     SUB_TITLE = f"by {AUTHOR}"
@@ -42,7 +43,7 @@ class GatewayApp(App):
         Binding("t", "show_tools", "Tools"),
         Binding("r", "show_resources", "Resources"),
         Binding("p", "show_prompts", "Prompts"),
-        Binding("d", "toggle_dark", "Theme"),
+        Binding("n", "next_theme", "Theme"),
     ]
 
     # ── Construction ────────────────────────────────────────────
@@ -59,6 +60,10 @@ class GatewayApp(App):
         self._log_level = log_level
         self._server_thread: Optional[threading.Thread] = None
         self._uvicorn_server: Optional[uvicorn.Server] = None
+        # File-descriptor level backup for guaranteed terminal restore
+        self._saved_stdout_fd: Optional[int] = None
+        self._saved_stderr_fd: Optional[int] = None
+        self._devnull_fd: Optional[int] = None
 
     # ── Compose ─────────────────────────────────────────────────
 
@@ -95,6 +100,33 @@ class GatewayApp(App):
 
         set_status_callback(self._on_status_from_server)
 
+        # --- Stdout / stderr isolation ---
+        # Use Textual's native print-capture so that any stray print()
+        # calls from library code are intercepted and turned into Print
+        # events (handled by on_print below) instead of corrupting the
+        # TUI display.
+        self.begin_capture_print()
+
+        # Additionally, redirect the OS-level stderr file descriptor
+        # (fd 2) to /dev/null so that low-level C library writes,
+        # tracebacks from daemon threads, and similar noise cannot
+        # reach the terminal.  Textual does NOT use stderr for
+        # rendering, so this is safe.
+        try:
+            self._saved_stderr_fd = os.dup(2)
+            self._devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(self._devnull_fd, 2)
+        except OSError:
+            logger.debug("Could not redirect stderr fd", exc_info=True)
+
+        # Load saved theme preference
+        from mcp_gateway.tui.settings import load_settings
+
+        settings = load_settings()
+        saved_theme = settings.get("theme", "textual-dark")
+        if saved_theme in self.available_themes:
+            self.theme = saved_theme
+
         # Launch the uvicorn server in a daemon thread
         self._server_thread = threading.Thread(
             target=self._run_server,
@@ -109,6 +141,33 @@ class GatewayApp(App):
 
         clear_status_callback()
         self._stop_server()
+
+        # Stop capturing print()
+        try:
+            self.end_capture_print()
+        except Exception:
+            pass
+
+        # Restore stderr file descriptor
+        try:
+            if self._saved_stderr_fd is not None:
+                os.dup2(self._saved_stderr_fd, 2)
+                os.close(self._saved_stderr_fd)
+                self._saved_stderr_fd = None
+        except OSError:
+            pass
+        try:
+            if self._devnull_fd is not None:
+                os.close(self._devnull_fd)
+                self._devnull_fd = None
+        except OSError:
+            pass
+
+    def on_print(self, event: Any) -> None:
+        """Handle captured print() calls — discard them silently."""
+        # Textual's begin_capture_print() turns print() into Print
+        # events.  We swallow them to prevent terminal corruption.
+        pass
 
     # ── Server thread ───────────────────────────────────────────
 
@@ -126,7 +185,9 @@ class GatewayApp(App):
             loop.close()
             # Notify the TUI (thread-safe)
             try:
-                self.call_from_thread(self.post_message, ServerStopped(error=error_msg))
+                self.call_from_thread(
+                    self.post_message, ServerStopped(error=error_msg)
+                )
             except Exception:
                 logger.debug("Failed to post ServerStopped", exc_info=True)
 
@@ -135,7 +196,7 @@ class GatewayApp(App):
         from mcp_gateway.display.logging_config import setup_logging
         from mcp_gateway.server.app import app
 
-        log_fpath, cfg_log_lvl = setup_logging(self._log_level)
+        log_fpath, cfg_log_lvl = setup_logging(self._log_level, quiet=True)
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_dir = os.path.dirname(os.path.dirname(script_dir))
@@ -153,7 +214,9 @@ class GatewayApp(App):
             host=self._host,
             port=self._port,
             log_config=None,
-            log_level=(cfg_log_lvl.lower() if cfg_log_lvl == "DEBUG" else "warning"),
+            log_level=(
+                cfg_log_lvl.lower() if cfg_log_lvl == "DEBUG" else "warning"
+            ),
         )
         self._uvicorn_server = uvicorn.Server(uvicorn_cfg)
         await self._uvicorn_server.serve()
@@ -232,7 +295,16 @@ class GatewayApp(App):
             resources = info.get("resources", [])
             prompts = info.get("prompts", [])
             route_map = info.get("route_map", {})
-            cap.populate(tools, resources, prompts, route_map)
+            logger.info(
+                "Populating TUI tables: %d tools, %d resources, %d prompts",
+                len(tools), len(resources), len(prompts),
+            )
+            try:
+                cap.populate(
+                    list(tools), list(resources), list(prompts), route_map,
+                )
+            except Exception:
+                logger.exception("Error populating capability tables")
 
     def on_capabilities_ready(self, event: CapabilitiesReady) -> None:
         """Explicit capability population (alternative path)."""
@@ -296,3 +368,27 @@ class GatewayApp(App):
         event_log.add_event("🛑 Shutting Down", "User requested quit…")
         self._stop_server()
         self.exit()
+
+    def action_next_theme(self) -> None:
+        """Cycle to the next enabled theme and persist the choice."""
+        from mcp_gateway.tui.settings import load_settings, save_settings
+
+        settings = load_settings()
+        enabled = settings.get("enabled_themes", ["textual-dark"])
+        # Filter to themes actually registered
+        enabled = [t for t in enabled if t in self.available_themes]
+        if not enabled:
+            enabled = ["textual-dark"]
+
+        current = self.theme or "textual-dark"
+        try:
+            idx = enabled.index(current)
+            next_theme = enabled[(idx + 1) % len(enabled)]
+        except ValueError:
+            next_theme = enabled[0]
+
+        self.theme = next_theme
+        settings["theme"] = next_theme
+        save_settings(settings)
+
+        self.notify(f"Theme: {next_theme}", timeout=2)

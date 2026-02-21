@@ -220,15 +220,15 @@ class CapabilityRegistry:
 
     def get_aggregated_tools(self) -> List[mcp_types.Tool]:
         """Get the aggregated tool list."""
-        return self._tools
+        return self._tools.copy()
 
     def get_aggregated_resources(self) -> List[mcp_types.Resource]:
         """Get the aggregated resource list."""
-        return self._resources
+        return self._resources.copy()
 
     def get_aggregated_prompts(self) -> List[mcp_types.Prompt]:
         """Get the aggregated prompt list."""
-        return self._prompts
+        return self._prompts.copy()
 
     def get_route_map(self) -> Dict[str, Tuple[str, str]]:
         """Get the capability-to-server routing map."""

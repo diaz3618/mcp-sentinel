@@ -30,7 +30,9 @@ _status_callback: Optional[StatusCallback] = None
 _suppress_console: bool = False
 
 
-def set_status_callback(callback: StatusCallback, suppress_console: bool = True) -> None:
+def set_status_callback(
+    callback: StatusCallback, suppress_console: bool = True
+) -> None:
     """Register a callback that receives every status update.
 
     Args:
@@ -83,7 +85,11 @@ def gen_status_info(
             else DEFAULT_LOG_LEVEL
         ),
         "sse_url": f"http://{host}:{port}{SSE_PATH}" if port > 0 else "N/A",
-        "cfg_fpath": (getattr(app_state, "config_file_path", "N/A") if app_state else "N/A"),
+        "cfg_fpath": (
+            getattr(app_state, "config_file_path", "N/A")
+            if app_state
+            else "N/A"
+        ),
         "err_msg": err_msg,
         "tools": tools or [],
         "resources": resources or [],
@@ -104,7 +110,9 @@ def gen_status_info(
     return info
 
 
-def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool = False) -> None:
+def disp_console_status(
+    stage: str, status_info: Dict[str, Any], is_final: bool = False
+) -> None:
     """Print formatted status information to the console.
 
     When a TUI callback is registered via ``set_status_callback``,
@@ -125,7 +133,7 @@ def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool 
     if suppress:
         return
 
-    header = f" MCP Gateway v{SERVER_VERSION} (by {AUTHOR}) "
+    header = f" MCP Sentinel v{SERVER_VERSION} (by {AUTHOR}) "
     sep_char = "="
     line_len = 70
 
@@ -139,13 +147,18 @@ def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool 
             if hasattr(disp_console_status, "header_printed"):
                 delattr(disp_console_status, "header_printed")
 
-    print(f"[{status_info['ts']}] {stage} Status: {status_info['status_msg']}")
+    print(
+        f"[{status_info['ts']}] {stage} Status: {status_info['status_msg']}"
+    )
 
     if not is_final and stage == "🚀 Initialization":
         print(f"    Server Name: {SERVER_NAME}")
         print(f"    SSE URL: {status_info['sse_url']}")
         print(f"    Config File: {os.path.basename(status_info['cfg_fpath'])}")
-        print(f"    Log File: {status_info['log_fpath']} " f"(level: {status_info['log_lvl_cfg']})")
+        print(
+            f"    Log File: {status_info['log_fpath']} "
+            f"(level: {status_info['log_lvl_cfg']})"
+        )
 
     if "total_svrs_num" in status_info and "conn_svrs_num" in status_info:
         print(
@@ -171,7 +184,9 @@ def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool 
         print(f"{sep_char * line_len}\n")
 
 
-def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO) -> None:
+def log_file_status(
+    status_info: Dict[str, Any], log_lvl: int = logging.INFO
+) -> None:
     """Write detailed status information to the log file."""
     log_lines = [
         f"Server Status Update: {status_info['status_msg']}",
@@ -195,11 +210,18 @@ def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO) ->
         ("Prompts", "prompts_count", "prompts"),
     ]:
         if cap_key_count in status_info:
-            log_lines.append(f"  Loaded MCP {cap_type_plural} " f"({status_info[cap_key_count]}):")
+            log_lines.append(
+                f"  Loaded MCP {cap_type_plural} "
+                f"({status_info[cap_key_count]}):"
+            )
             cap_list = status_info.get(cap_list_key, [])
             if cap_list:
                 for item in cap_list:
-                    desc = item.description.strip().split("\n")[0] if item.description else "-"
+                    desc = (
+                        item.description.strip().split("\n")[0]
+                        if item.description
+                        else "-"
+                    )
                     log_lines.append(f"    - {item.name}, Description: {desc}")
             elif status_info[cap_key_count] > 0:
                 log_lines.append(

@@ -1,11 +1,11 @@
 [project]
-name = "mcp-gateway"
+name = "mcp-sentinel"
 version = "4.0.0"
 description = "A central gateway for aggregating MCP server capabilities via SSE"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-only"
-authors = [{ name = "trtyr" }]
+authors = [{ name = "Daniel Diaz Santiago" }]
 dependencies = [
     "mcp>=1.6.0",
     "starlette>=0.27.0",
@@ -14,7 +14,11 @@ dependencies = [
     "textual>=1.0.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["mcp_gateway*"]
+
 [project.scripts]
+mcp-sentinel = "mcp_gateway.cli:main"
 mcp-gateway = "mcp_gateway.cli:main"
 
 [dependency-groups]

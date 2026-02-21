@@ -1,8 +1,8 @@
-"""Shared constants for MCP Gateway."""
+"""Shared constants for MCP Sentinel."""
 
-SERVER_NAME = "MCP_Gateway"
+SERVER_NAME = "MCP Sentinel"
 SERVER_VERSION = "4.0.0"
-AUTHOR = "trtyr"
+AUTHOR = "diaz3618"
 
 # Network defaults
 DEFAULT_HOST = "127.0.0.1"
