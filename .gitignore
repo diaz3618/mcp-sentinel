@@ -178,3 +178,4 @@ config.json
 .vscode
 .github/copilot-instructions.md
 .codex/
+docs/**
