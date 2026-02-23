@@ -1,29 +1,32 @@
-"""
-Defines project-specific exception classes.
-"""
+"""Custom exception classes for MCP Sentinel."""
+
 from typing import Optional
 
 
-class BridgeBaseError(Exception):
-    """Base class for all custom exceptions in MCP Bridge Server."""
+class SentinelBaseError(Exception):
+    """Base class for all custom exceptions in MCP Sentinel."""
+
     pass
 
 
-class ConfigurationError(BridgeBaseError):
+class ConfigurationError(SentinelBaseError):
     """Raised when loading or validating the configuration file fails."""
+
     pass
 
 
-class BackendServerError(BridgeBaseError):
+class BackendServerError(SentinelBaseError):
     """
     Raised when interacting with a backend MCP server fails,
     or when a backend server reports an error.
     """
 
-    def __init__(self,
-                 message: str,
-                 svr_name: Optional[str] = None,
-                 orig_exc: Optional[Exception] = None):
+    def __init__(
+        self,
+        message: str,
+        svr_name: Optional[str] = None,
+        orig_exc: Optional[Exception] = None,
+    ):
         self.svr_name = svr_name
         self.orig_exc = orig_exc
 
@@ -36,17 +39,17 @@ class BackendServerError(BridgeBaseError):
         super().__init__(full_msg)
 
 
-class CapabilityConflictError(BridgeBaseError):
+class CapabilityConflictError(SentinelBaseError):
     """
     Raised when capability names conflict while aggregating from
     different backend servers.
     """
 
     def __init__(self, cap_name: str, svr1_name: str, svr2_name: str):
-
         message = (
             f"Capability name conflict: '{cap_name}' is provided by both "
             f"'{svr1_name}' and '{svr2_name}'. Ensure server names or "
             "capability prefixes are unique, or configure a conflict "
-            "resolution strategy.")
+            "resolution strategy."
+        )
         super().__init__(message)

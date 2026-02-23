@@ -1,10 +1,10 @@
 import logging
+
 from mcp.server.fastmcp import FastMCP
-from mcp import types as mcp_types
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='[StdioTestServer] %(asctime)s - %(levelname)s - %(message)s')
+    level=logging.INFO, format="[StdioTestServer] %(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("StdioTest")
@@ -22,9 +22,9 @@ async def echo_stdio(message: str) -> str:
     Returns:
     str: The original message prefixed with "Stdio Echo: ".
     """
-    logger.info(f"Tool 'echo_stdio' called with message: '{message}'")
+    logger.info("Tool 'echo_stdio' called with message: '%s'", message)
     response = f"Stdio Echo: {message}"
-    logger.info(f"Tool 'echo_stdio' responding with: '{response}'")
+    logger.info("Tool 'echo_stdio' responding with: '%s'", response)
     return response
 
 
@@ -40,9 +40,9 @@ async def add_stdio(a: int, b: int) -> int:
     Returns:
     int: The sum of the two integers.
     """
-    logger.info(f"Tool 'add_stdio' called with a={a}, b={b}")
+    logger.info("Tool 'add_stdio' called with a=%s, b=%s", a, b)
     result = a + b
-    logger.info(f"Tool 'add_stdio' responding with: {result}")
+    logger.info("Tool 'add_stdio' responding with: %s", result)
     return result
 
 
@@ -53,9 +53,7 @@ def get_stdio_greeting() -> str:
     """
     logger.info("Resource 'x-stdio-test-resource://local/greeting' requested.")
     greeting = "Hello from Stdio Test Server Resource!"
-    logger.info(
-        f"Resource 'x-stdio-test-resource://local/greeting' responding with: '{greeting}'"
-    )
+    logger.info("Resource 'x-stdio-test-resource://local/greeting' responding with: '%s'", greeting)
     return greeting
 
 
@@ -65,8 +63,9 @@ if __name__ == "__main__":
     try:
         mcp.run(transport="stdio")
     except Exception as e:
-        logger.exception(f"StdioTest MCP Server crashed: {e}")
+        logger.exception("StdioTest MCP Server crashed: %s", e)
 
         import sys
+
         sys.exit(1)
     logger.info("StdioTest MCP Server has shut down.")

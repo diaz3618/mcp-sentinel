@@ -1,0 +1,117 @@
+/* MCP Sentinel TUI Layout */
+
+/* ── Global ─────────────────────────────────────────────────────── */
+
+Screen {
+    background: $surface;
+}
+
+/* ── Top-level layout ───────────────────────────────────────────── */
+
+#top-row {
+    height: 1fr;
+    min-height: 12;
+}
+
+#sidebar {
+    width: 38;
+    min-width: 30;
+    height: 100%;
+}
+
+#main-area {
+    height: 100%;
+}
+
+/* ── Server-info panel ──────────────────────────────────────────── */
+
+ServerInfoWidget {
+    height: auto;
+    max-height: 10;
+    border: round $accent;
+    padding: 0 1;
+}
+
+ServerInfoWidget .label {
+    color: $text-muted;
+}
+
+ServerInfoWidget .value {
+    color: $text;
+    text-style: bold;
+}
+
+ServerInfoWidget #title-row {
+    text-style: bold;
+    color: $success;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+/* ── Backend-status panel ───────────────────────────────────────── */
+
+BackendStatusWidget {
+    height: auto;
+    max-height: 6;
+    border: round $accent;
+    padding: 0 1;
+    dock: bottom;
+}
+
+BackendStatusWidget #backend-title {
+    text-style: bold;
+    color: $warning;
+    margin-bottom: 0;
+}
+
+BackendStatusWidget #backend-bar {
+    height: 1;
+}
+
+BackendStatusWidget #backend-detail {
+    color: $text;
+}
+
+/* ── Event log ──────────────────────────────────────────────────── */
+
+EventLogWidget {
+    border: round $accent;
+    min-height: 8;
+}
+
+EventLogWidget RichLog {
+    height: 100%;
+    scrollbar-size: 1 1;
+}
+
+/* ── Capability tables ──────────────────────────────────────────── */
+
+#cap-section {
+    height: 1fr;
+    min-height: 8;
+    border: round $accent;
+}
+
+#cap-section ContentSwitcher {
+    height: 1fr;
+}
+
+#cap-tabs {
+    height: 1fr;
+}
+
+#cap-section DataTable {
+    height: 1fr;
+}
+
+/* ── Footer bindings ────────────────────────────────────────────── */
+
+Footer {
+    background: $panel;
+}
+
+Header {
+    background: $panel;
+    color: $text;
+}
