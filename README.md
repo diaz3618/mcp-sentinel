@@ -1,4 +1,4 @@
-# MCP Gateway
+# MCP Sentinel
 
 ## License
 
@@ -6,285 +6,248 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Project Overview
 
-MCP Gateway is an application built with Python. It acts as a **central gateway** that connects to and aggregates capabilities from multiple backend MCP servers (whether they communicate via Stdio or SSE protocols). Ultimately, it exposes these aggregated capabilities to upstream MCP clients through a unified **SSE** endpoint (`/sse`).
+MCP Sentinel is a **central gateway and management platform** for MCP (Model Context Protocol) servers. It connects to and aggregates capabilities from multiple backend MCP servers (stdio, SSE, or streamable-HTTP) and exposes them to upstream MCP clients through **SSE** (`/sse`) and **Streamable HTTP** (`/mcp`) transports.
+
+The project has a **server/client architecture**:
+
+- **`mcp-sentinel server`** — Headless server that runs the MCP bridge, management API, and transports.
+- **`mcp-sentinel tui`** — Textual-based terminal UI that connects to a running server over HTTP.
+- **`mcp-sentinel secret`** — Manage encrypted secrets (set, get, list, delete).
 
 **Core Advantages:**
 
-1. **Simplified Client Configuration:** MCP clients only need to connect to the single address of the MCP Gateway to access the functionalities of all backend services, eliminating the need to configure each backend server individually.
-2. **Capability Aggregation & Orchestration:** Aggregates MCP tools with diverse capabilities from various sources, providing a foundation for building more powerful, customized agents focused on specific task domains.
-
-## Project File Structure
-
-```plaintext
-.
-├── config.json                     # Core configuration file: Defines the backend MCP servers to connect to and manage.
-├── main.py                         # Program entry point: Parses command-line arguments, sets up logging, and starts the web server.
-├── bridge_app.py                   # Starlette application core: Handles forwarding of MCP requests and SSE connection management.
-├── client_manager.py               # Client manager: Responsible for establishing and maintaining connection sessions with backend MCP servers.
-├── capability_registry.py          # Capability registry: Dynamically discovers, registers, and manages capabilities provided by all backend MCP servers.
-├── config_loader.py                # Configuration loader: Responsible for loading and strictly validating the format and content of the `config.json` file.
-├── errors.py                       # Custom exceptions: Defines project-specific error types, such as configuration errors and backend server errors.
-├── mods/                           # Contains built-in/example backend MCP server scripts.
-└── logs/                           # Log directory: Stores runtime log files (created automatically).
-```
+1. **Simplified Client Configuration:** MCP clients connect to one MCP Sentinel address to access all backend services.
+2. **Capability Aggregation:** Aggregates MCP tools, resources, and prompts from multiple sources into a single endpoint.
+3. **Management API:** RESTful API at `/manage/v1/` for runtime inspection and control of backend services.
+4. **Multi-Server TUI:** Connect the TUI to multiple Sentinel servers simultaneously and switch between them.
+5. **Security:** JWT/OIDC authentication, RBAC authorization, encrypted secret storage, and log redaction.
 
 ## Installation and Setup
 
-This project is written in Python. Using `uv` for environment and dependency management is recommended.
+Requires Python 3.10+. Using `uv` for environment management is recommended.
 
 1. **Clone Repository**
 
     ```bash
-    git clone https://github.com/trtyr/MCP-Gateway.git
-    cd MCP-Gateway
+    git clone <repo-url>
+    cd mcp-sentinel
     ```
 
 2. **Create and Activate Virtual Environment**
 
     ```bash
-    # Create virtual environment
     uv venv
-
-    # Activate virtual environment
-    # Linux/macOS
-    source .venv/bin/activate
-    # Windows (Command Prompt/PowerShell)
-    .venv\Scripts\activate
+    source .venv/bin/activate   # Linux/macOS
+    # .venv\Scripts\activate    # Windows
     ```
 
 3. **Install Dependencies**
 
     ```bash
-    # Install all required dependencies based on pyproject.toml
     uv sync
     ```
 
-After completing these steps, the project is ready to run.
-
 ## Quick Start
 
-### Get Project Help
-
-You can use the `-h` or `--help` argument to view all available startup options:
+### View Help
 
 ```bash
-# Windows
-uv run python .\main.py -h
-# Linux/macOS
-uv run python ./main.py -h
+mcp-sentinel --help
 ```
 
-The output will be similar to this:
+```text
+usage: mcp-sentinel [-h] {server,tui,secret} ...
 
-```plaintext
-usage: main.py [-h] [--host HOST] [--port PORT] [--log-level {debug,info,warning,error,critical}]
+MCP Sentinel v0.1.0
 
-Start MCP_Bridge_Server v3.0.0
+positional arguments:
+  {server,tui,secret}
+    server       Run the headless Sentinel server (Uvicorn + MCP bridge)
+    tui          Launch the Textual TUI connected to a running Sentinel server
+    secret       Manage encrypted secrets (set, get, list, delete)
 
 options:
-  -h, --help            show this help message and exit
-  --host HOST           Host address (default: 0.0.0.0)
-  --port PORT           Port (default: 9000)
-  --log-level {debug,info,warning,error,critical}
-                        Set file logging level (default: info)
+  -h, --help     show this help message and exit
 ```
 
-### Start the Project
-
-**Note:** The latest version removed Rich-based console styling. Actual runtime output may differ from the screenshots.
-
-Use `uv run python main.py` to start the server. You can specify the `host`, `port`, and `log-level`:
+### Start the Server
 
 ```bash
-# Listen on all network interfaces on port 9000, set log level to debug
-uv run python main.py --host 0.0.0.0 --port 9000 --log-level debug
+# Default: listen on 127.0.0.1:9000, auto-detect config file
+mcp-sentinel server
+
+# Custom host, port, and log level
+mcp-sentinel server --host 0.0.0.0 --port 8080 --log-level debug
+
+# Explicit config file
+mcp-sentinel server --config /path/to/config.yaml
 ```
 
-After startup, you will see console output similar to the image below, including server status, connection info, and loaded tools:
+Config file resolution order: `--config` flag → `SENTINEL_CONFIG` env var → auto-detect (`config.yaml` → `config.yml`).
 
-![](./img/1.png)
+The server exposes:
+
+- **SSE endpoint** at `http://<host>:<port>/sse` — for MCP clients using the SSE transport.
+- **Streamable HTTP endpoint** at `http://<host>:<port>/mcp` — for MCP clients using the newer Streamable HTTP transport.
+- **Management API** at `http://<host>:<port>/manage/v1/` — for the TUI and automation.
+
+Set the `SENTINEL_MGMT_TOKEN` environment variable to enable bearer token authentication on the management API.
+
+### Launch the TUI
+
+```bash
+# Connect to a local server
+mcp-sentinel tui --server http://127.0.0.1:9000
+
+# With authentication
+mcp-sentinel tui --server http://127.0.0.1:9000 --token YOUR_TOKEN
+
+# Multi-server mode (uses ~/.config/mcp-sentinel/servers.json)
+mcp-sentinel tui --servers-config /path/to/servers.json
+```
+
+### Multi-Server Configuration
+
+Create a `servers.json` file to manage multiple Sentinel servers:
+
+```json
+{
+  "servers": [
+    {
+      "name": "local",
+      "url": "http://127.0.0.1:9000"
+    },
+    {
+      "name": "production",
+      "url": "https://sentinel.example.com:9000",
+      "token": "your-production-token"
+    }
+  ],
+  "active": "local"
+}
+```
+
+Default location: `~/.config/mcp-sentinel/servers.json`
 
 ### MCP Client Connection
 
-**Note:** The latest version removed Rich-based console styling. Actual runtime output may differ from the screenshots.
+After starting the server, connect any MCP-compatible client to one of the transport endpoints:
 
-After starting MCP Gateway, you can use any MCP-compatible client (such as Cline, Cursor, Claude Desktop, or a custom client) to connect to the SSE endpoint provided by the Gateway.
+| Transport | URL |
+|-----------|-----|
+| SSE | `http://<host>:<port>/sse` |
+| Streamable HTTP | `http://<host>:<port>/mcp` |
 
-The default address is `http://<Server_IP_Address>:9000/sse` (if using the default port).
-
-**Example (Using ChatWise Connect):**
-
-1. Select `SSE` connection type.
-2. Enter the Gateway's SSE URL (e.g., `http://127.0.0.1:9000/sse`).
-3. Click `Connect`.
-
-![](./img/2.png)
-
-After a successful connection, you can see all backend MCP tools aggregated through the Gateway in the client:
-
-![](./img/3.png)
+Supported clients include Claude Desktop, Cursor, Cline, and any other MCP-compatible application.
 
 ### Logs
 
-Runtime logs are automatically saved in the `logs` folder in the project root directory. Log filenames include timestamps and log levels, making it easy to trace issues.
+Runtime logs are saved in the `logs/` directory with timestamped filenames.
 
-```
-logs/
-├── log_20240801_103000_INFO.log
-└── log_20240801_110000_DEBUG.log
-...
-```
+## Configuration
 
-![](./img/4.png)
+The configuration file defines both server settings and backend MCP server connections.
 
-## Configuration File (`config.json`)
+### Config Format (YAML)
 
-The core configuration file `config.json` is located in the project root directory. It defines the backend MCP servers that MCP Gateway needs to connect to and manage.
+The config uses a versioned YAML format with server settings and backend definitions:
 
-Each entry represents a backend server. The key is the **unique name you assign to that backend server** (this name will be used as the **prefix** for its capabilities), and the value is an object containing the server's configuration.
+```yaml
+version: "1"
 
-Two types of backend server connections are supported:
+server:
+  host: "0.0.0.0"
+  port: 9000
+  transport: sse                # "sse" or "streamable-http"
+  management:
+    enabled: true
+    token: "${SENTINEL_MGMT_TOKEN}"
 
-- **`stdio`**: Communicates with a locally started MCP server process via standard input/output (stdin/stdout).
-- **`sse`**: Communicates with a remote or locally running MCP server via the Server-Sent Events (SSE) protocol.
+backends:
+  my_stdio_server:
+    type: stdio
+    command: python
+    args: ["path/to/server.py"]
+    env:
+      API_KEY: "${MY_API_KEY}"
 
-### Stdio Type Configuration
+  remote_sse:
+    type: sse
+    url: "https://mcp.example.com/sse"
 
-Suitable for local MCP server processes whose lifecycle needs to be managed by the Gateway.
-
-**Configuration Fields:**
-
-- `type` (required): Must be `"stdio"`.
-- `command` (required): The executable command used to start the server process (e.g., `python`, `uv`, `node`, or the absolute path to a script/executable).
-- `args` (required): A list of arguments (List of strings) passed to the `command`.
-- `env` (optional): A dictionary of environment variables (Dict[str, str]) to set for the child process. If omitted, the child process inherits the Gateway's environment.
-
-**Example:**
-
-```json
-{
-  "powershell": {
-    "type": "stdio",
-    "command": "python",
-    "args": ["servers/powershell_server.py"]
-  },
-  "my_custom_tool": {
-    "type": "stdio",
-    "command": "/path/to/my/custom_mcp_server",
-    "args": ["--port", "ignored_for_stdio", "--some-flag"],
-    "env": {
-      "API_KEY": "your_secret_key"
-    }
-  }
-}
+  remote_streamable:
+    type: streamable-http
+    url: "https://mcp.example.com/mcp"
 ```
 
-**How it Works:** When MCP Gateway starts, it uses the specified `command` and `args` (along with optional `env`) to launch a child process. The Gateway communicates with the backend MCP server through this child process's standard input and output. When the Gateway shuts down, it attempts to terminate these child processes.
+### Backend Types
 
-### SSE Type Configuration
+**stdio** — Local MCP server processes managed by Sentinel.
 
-Suitable for connecting to already running MCP servers (local or remote), or cases where the Gateway needs to start a local SSE server process before connecting.
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | `"stdio"` |
+| `command` | Yes | Executable to run |
+| `args` | No | Command arguments (default: `[]`) |
+| `env` | No | Environment variables |
 
-**Configuration Fields:**
+**sse** — Connect to MCP servers over SSE; optionally start a local process.
 
-- `type` (required): Must be `"sse"`.
-- `url` (required): The SSE endpoint URL of the backend MCP server (full HTTP/HTTPS address).
-- `command` (optional): If specified, the Gateway will run this command at startup to launch the local SSE server.
-- `args` (optional, only when `command` is specified): A list of arguments passed to the `command`.
-- `env` (optional, only when `command` is specified): Environment variables to set for the locally launched child process.
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | `"sse"` |
+| `url` | Yes | SSE endpoint URL |
+| `command` | No | Optional local process to start |
+| `args` | No | Command arguments |
+| `headers` | No | Extra HTTP headers |
+| `auth` | No | Outgoing auth config (`static` or `oauth2`) |
 
-**Example 1: Connecting to an already running remote SSE server**
+**streamable-http** — Connect to MCP servers using Streamable HTTP transport.
 
-```json
-{
-  "remote_search_service": {
-    "type": "sse",
-    "url": "https://mcp.example.com/search/sse"
-  }
-}
-```
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | `"streamable-http"` |
+| `url` | Yes | Streamable HTTP endpoint URL |
+| `headers` | No | Extra HTTP headers |
+| `auth` | No | Outgoing auth config (`static` or `oauth2`) |
 
-**Example 2: Gateway starts a local SSE server and connects**
+> Streamable HTTP backends must always set `type: streamable-http` explicitly.
 
-```json
-{
-  "local_sse_server": {
-    "type": "sse",
-    "url": "http://127.0.0.1:8080/sse",
-    "command": "uv",
-    "args": ["run", "python", "servers/my_local_sse_app.py", "--port", "8080"],
-    "env": { "MODE": "production" }
-  }
-}
-```
+### Common Backend Options
 
-**How it Works:**
+All backend types also support:
 
-- **Only `url` provided**: The Gateway directly attempts to connect to the specified `url`.
-- **`url`, `command`, `args` provided**: The Gateway first uses `command` and `args` to start a local process (expecting this process to listen on the address and port corresponding to `url`). It then waits for a short period (`LOCAL_SSE_STARTUP_DELAY` defined in `client_manager.py`) before attempting to connect to the `url`. When the Gateway shuts down, it attempts to terminate this local process.
+| Field | Default | Description |
+|-------|---------|-------------|
+| `group` | `"default"` | Logical server group name |
+| `filters` | — | Per-capability allow/deny lists (tools, resources, prompts) |
+| `tool_overrides` | — | Rename or override descriptions for individual tools |
+| `timeouts` | — | Per-backend timeout overrides (`init`, `cap_fetch`, `sse_startup`) |
 
-## Configuration Addition Examples
+### Environment Variable Expansion
 
-Here are examples of how to add third-party MCP servers to `config.json`.
+All string values support `${VAR_NAME}` syntax for environment variable expansion.
 
-### Stdio Example: Playwright MCP
+### Secret References
 
-Suppose you want to integrate Playwright's MCP server (`@playwright/mcp`).
+String values can use `secret:name` syntax to resolve values from encrypted storage (see `mcp-sentinel secret`).
 
-1. **Understand Startup Method**: Playwright MCP is typically started using `npx @playwright/mcp@latest`. This is a Node.js package executed via `npx`.
+## Management API
 
-2. **Configure `config.json`**:
+The management API is mounted at `/manage/v1/` and provides:
 
-    ```json
-    {
-      // ... other server configurations ...
-      "playwright": {
-        "type": "stdio",
-        "command": "npx",
-        "args": ["@playwright/mcp@latest"]
-      }
-      // ... other server configurations ...
-    }
-    ```
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/manage/v1/health` | GET | Health check (uptime, backend health summary) |
+| `/manage/v1/status` | GET | Server status (version, config, endpoints, feature flags) |
+| `/manage/v1/backends` | GET | List all backends with connection state and capabilities |
+| `/manage/v1/groups` | GET | List logical server groups |
+| `/manage/v1/capabilities` | GET | Aggregated tools, resources, prompts |
+| `/manage/v1/sessions` | GET | Active MCP client sessions |
+| `/manage/v1/events` | GET | Recent event log entries |
+| `/manage/v1/events/stream` | GET | Live SSE event stream |
+| `/manage/v1/reload` | POST | Hot-reload configuration |
+| `/manage/v1/reconnect/{name}` | POST | Reconnect a specific backend |
+| `/manage/v1/shutdown` | POST | Graceful server shutdown |
 
-    Here, `command` is `npx`, and `args` contains the Playwright MCP package name and version.
-
-3. **Restart Gateway**: Save `config.json` and restart MCP Gateway.
-
-After starting, you should see tools named `playwright/...` (e.g., `playwright/browse`) in the console logs and your client.
-
-![](./img/5.png)
-
-![](./img/6.png)
-
-![](./img/7.png)
-
-### SSE Example: ENScan_GO (Local Start)
-
-Suppose you want to integrate ENScan_GO, a Go program that can be started with `./enscan --mcp` and provides an SSE service at `http://localhost:8080`.
-
-1. **Get Executable File**: Download the ENScan_GO executable (e.g., `enscan-v1.2.1-windows-amd64.exe`) and place it in an accessible location (e.g., the `servers/` directory or in your system PATH).
-
-2. **Configure `config.json`**:
-
-    ```json
-    {
-      // ... other server configurations ...
-      "enscan": {
-        "type": "sse",
-        "url": "http://127.0.0.1:8080/sse", // Address ENScan_GO listens on
-        // Note: Ensure path separators are correct on Windows, or use an absolute path
-        "command": "servers/enscan-v1.2.1-windows-amd64.exe", // Path to the executable
-        "args": ["--mcp"] // Startup arguments
-      }
-      // ... other server configurations ...
-    }
-    ```
-
-    Here, we specify `type` as `sse`, provide the `url` it listens on, and use `command` and `args` to tell the Gateway how to start this local SSE server.
-
-3. **Restart Gateway**: Save `config.json` and restart MCP Gateway.
-
-The Gateway will first start the ENScan_GO process, then connect to `http://127.0.0.1:8080/sse`. After starting, you should see tools named `enscan/...`.
-
-![](./img/8.png)
+When `SENTINEL_MGMT_TOKEN` is set, include `Authorization: Bearer <token>` in requests.

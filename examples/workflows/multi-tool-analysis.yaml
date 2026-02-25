@@ -1,0 +1,55 @@
+# multi-tool-analysis — parallel fan-out / fan-in workflow
+#
+# Demonstrates parallel step execution (steps at the same dependency
+# level run concurrently), conditional skipping, and fan-in aggregation.
+
+name: multi-tool-analysis
+description: Run independent analyses in parallel and merge results
+
+inputs:
+  repo:
+    type: string
+    description: Repository identifier (owner/name)
+  run_security:
+    type: boolean
+    description: Whether to include security scan
+
+steps:
+  # ── Level 0 — these two steps have no dependencies and run in parallel ──
+
+  - id: code-metrics
+    tool: analyzer.code_metrics
+    description: Compute code complexity and line counts
+    args:
+      repository: "${inputs.repo}"
+
+  - id: dependency-audit
+    tool: analyzer.dependency_audit
+    description: Check for outdated or vulnerable dependencies
+    args:
+      repository: "${inputs.repo}"
+
+  # ── Level 0 (conditional) — runs in parallel with the above ──
+
+  - id: security-scan
+    tool: security.scan
+    description: Run static security analysis
+    args:
+      repository: "${inputs.repo}"
+      severity: high
+    condition: "${inputs.run_security}"
+    retry: 1
+    on_error: skip
+
+  # ── Level 1 — fan-in: waits for all three analyses ──
+
+  - id: merge
+    tool: report.merge
+    description: Combine individual reports into a single summary
+    depends_on: [code-metrics, dependency-audit, security-scan]
+    args:
+      metrics: "${code-metrics.output}"
+      audit: "${dependency-audit.output}"
+      security: "${security-scan.output}"
+
+output: "${merge.output}"

@@ -1,0 +1,76 @@
+{
+  "name": "github-integration",
+  "version": "1.0.0",
+  "description": "Triage issues, summarise pull requests, and automate GitHub workflows",
+  "author": "MCP Sentinel",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "list_issues",
+      "backend": "github",
+      "description": "List open issues with optional label and milestone filters"
+    },
+    {
+      "name": "get_issue",
+      "backend": "github",
+      "description": "Retrieve full details of a single issue by number"
+    },
+    {
+      "name": "triage_issue",
+      "backend": "github",
+      "description": "Classify an issue and suggest labels based on content"
+    },
+    {
+      "name": "list_pull_requests",
+      "backend": "github",
+      "description": "List open pull requests with status and review info"
+    },
+    {
+      "name": "summarise_pr",
+      "backend": "github",
+      "description": "Generate a plain-language summary of a pull request diff"
+    }
+  ],
+  "workflows": [
+    {
+      "name": "issue-triage",
+      "description": "Fetch an issue, classify it, and add appropriate labels",
+      "steps": [
+        {
+          "id": "fetch",
+          "tool": "github.get_issue",
+          "args": { "number": "${inputs.issue_number}" }
+        },
+        {
+          "id": "classify",
+          "tool": "github.triage_issue",
+          "depends_on": ["fetch"],
+          "args": { "title": "${fetch.output.title}", "body": "${fetch.output.body}" }
+        }
+      ]
+    },
+    {
+      "name": "pr-summary",
+      "description": "Fetch open PRs and summarise the most recent one",
+      "steps": [
+        {
+          "id": "list",
+          "tool": "github.list_pull_requests",
+          "args": { "state": "open", "limit": 1 }
+        },
+        {
+          "id": "summarise",
+          "tool": "github.summarise_pr",
+          "depends_on": ["list"],
+          "args": { "pr_number": "${list.output[0].number}" },
+          "condition": "len(list.output) > 0"
+        }
+      ]
+    }
+  ],
+  "config": {
+    "github_token": "${secrets.GITHUB_TOKEN}",
+    "default_repo": "owner/repo"
+  },
+  "dependencies": ["github"]
+}

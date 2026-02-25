@@ -1,0 +1,80 @@
+# Outgoing Authentication
+
+MCP Sentinel can authenticate to backend MCP servers using static headers or
+OAuth 2.0 client credentials. This applies to SSE and Streamable HTTP backends.
+
+## Static Headers
+
+Inject fixed headers into every request to the backend:
+
+```yaml
+backends:
+  my-server:
+    type: sse
+    url: "http://backend:8080/sse"
+    auth:
+      type: static
+      headers:
+        Authorization: "Bearer ${API_KEY}"
+        X-Custom-Header: "value"
+```
+
+Header values support `${ENV_VAR}` expansion and `secret:name` resolution.
+
+## OAuth 2.0 Client Credentials
+
+Automatically obtain and refresh access tokens using the OAuth 2.0 client
+credentials grant:
+
+```yaml
+backends:
+  my-server:
+    type: streamable-http
+    url: "http://backend:8080/mcp"
+    auth:
+      type: oauth2
+      token_url: "https://auth.example.com/oauth/token"
+      client_id: "sentinel-client"
+      client_secret: "${OAUTH_CLIENT_SECRET}"
+      scopes:
+        - mcp:read
+        - mcp:write
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `token_url` | Yes | OAuth 2.0 token endpoint URL |
+| `client_id` | Yes | Client identifier |
+| `client_secret` | Yes | Client secret (supports `${ENV_VAR}` and `secret:name`) |
+| `scopes` | No | Requested OAuth scopes (default: empty) |
+
+### Token Management
+
+- Tokens are cached in memory with `TokenCache`
+- Near-expiry tokens are refreshed automatically (buffer before TTL)
+- Token fetch uses `asyncio.Lock` with double-check pattern to prevent
+  thundering herd (multiple concurrent requests all trying to refresh)
+- HTTP requests to the token endpoint have a 30-second timeout
+- The `Authorization: Bearer <token>` header is injected into backend requests
+
+### Error Handling
+
+If token acquisition fails:
+
+- The error is logged
+- The backend request proceeds without authentication
+- The backend may reject the request (depends on backend's auth requirements)
+
+## No Auth
+
+If no `auth` block is specified, no authentication headers are added to backend
+requests. Additional headers can still be set via the `headers` field:
+
+```yaml
+backends:
+  public-server:
+    type: sse
+    url: "http://public-backend:8080/sse"
+    headers:
+      X-Request-Source: "sentinel"
+```

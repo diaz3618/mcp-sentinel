@@ -1,0 +1,420 @@
+# Configuration Reference
+
+MCP Sentinel uses a structured configuration file to define backends,
+authentication, middleware, and operational settings.
+
+## File Format
+
+Sentinel uses **YAML** config files. The loader auto-detects the extension.
+
+| Extension | Format |
+|-----------|--------|
+| `.yaml`, `.yml` | YAML |
+
+### Config File Resolution
+
+Sentinel searches for config files in this order:
+
+1. `--config` CLI flag (explicit path)
+2. `SENTINEL_CONFIG` environment variable
+3. Auto-detect in project directory: `config.yaml` → `config.yml`
+
+## Config Structure
+
+```yaml
+version: "1"                    # Config format version (required)
+
+server: { ... }                 # Server settings
+backends: { ... }               # Backend MCP server definitions
+conflict_resolution: { ... }    # Capability conflict strategy
+audit: { ... }                  # Audit logging
+optimizer: { ... }              # Tool optimizer (meta-tools)
+incoming_auth: { ... }          # Incoming client authentication
+authorization: { ... }         # RBAC policies
+feature_flags: { ... }          # Feature toggles
+```
+
+## Variable Expansion
+
+Config values support two types of dynamic references:
+
+### Environment Variables
+
+Use `${VAR_NAME}` to inject environment variable values:
+
+```yaml
+backends:
+  my-server:
+    type: sse
+    url: "http://localhost:${MY_SERVER_PORT}/sse"
+    headers:
+      Authorization: "Bearer ${MY_API_KEY}"
+```
+
+### Secret References
+
+Use `secret:<name>` to resolve values from the encrypted secret store:
+
+```yaml
+backends:
+  my-server:
+    type: sse
+    url: "http://localhost:8080/sse"
+    headers:
+      Authorization: "Bearer secret:my-api-key"
+```
+
+See [Secrets Management](security/secrets.md) for setting up the secret store.
+
+---
+
+## `server`
+
+Server listen address and transport settings.
+
+```yaml
+server:
+  host: "127.0.0.1"
+  port: 9000
+  transport: sse                # "sse" or "streamable-http"
+  management:
+    enabled: true
+    token: "${SENTINEL_MGMT_TOKEN}"
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `host` | string | `"127.0.0.1"` | Bind address |
+| `port` | integer | `9000` | Listen port (1–65535) |
+| `transport` | string | `"sse"` | Primary transport: `"sse"` or `"streamable-http"` |
+| `management.enabled` | boolean | `true` | Enable the `/manage/v1/` REST API |
+| `management.token` | string | `null` | Bearer token for management endpoints. Also `SENTINEL_MGMT_TOKEN` env var. If unset, management API has no auth. |
+
+> **Note:** Both transports are always available regardless of the `transport`
+> setting. The setting controls which is advertised as primary.
+
+---
+
+## `backends`
+
+A map of named backend MCP server connections. Each backend has a `type` that
+determines its connection method.
+
+### Stdio Backend
+
+Launches a local process and communicates via stdin/stdout.
+
+```yaml
+backends:
+  my-local-tool:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-everything"]
+    env:
+      NODE_ENV: production
+    group: tools
+    timeouts:
+      init: 30
+    filters:
+      tools:
+        allow: ["search_*"]
+        deny: ["dangerous_*"]
+    tool_overrides:
+      old_name:
+        name: new_name
+        description: "Custom description"
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | `"stdio"` | — | **Required** |
+| `command` | string | — | **Required.** Executable to launch |
+| `args` | list[string] | `[]` | Command arguments |
+| `env` | map | `null` | Environment variables for the process |
+| `group` | string | `"default"` | Logical server group |
+| `timeouts` | object | defaults | Connection timeouts |
+| `filters` | object | defaults | Capability filters |
+| `tool_overrides` | map | `{}` | Per-tool name/description overrides |
+
+### SSE Backend
+
+Connects to a remote MCP server via Server-Sent Events.
+
+```yaml
+backends:
+  remote-sse:
+    type: sse
+    url: "http://remote-host:8080/sse"
+    headers:
+      X-Custom: "value"
+    auth:
+      type: static
+      headers:
+        Authorization: "Bearer ${API_TOKEN}"
+    group: remote
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | `"sse"` | — | **Required** |
+| `url` | string | — | **Required.** SSE endpoint URL (must start with `http://` or `https://`) |
+| `command` | string | `null` | Optional local process to launch before connecting |
+| `args` | list[string] | `[]` | Process arguments |
+| `env` | map | `null` | Process environment |
+| `headers` | map | `null` | Extra HTTP headers (values support `${ENV_VAR}`) |
+| `auth` | object | `null` | [Outgoing auth](security/outgoing-auth.md) config |
+| `group` | string | `"default"` | Logical server group |
+| `timeouts` | object | defaults | Connection timeouts |
+| `filters` | object | defaults | Capability filters |
+| `tool_overrides` | map | `{}` | Per-tool name/description overrides |
+
+### Streamable HTTP Backend
+
+Connects via the newer MCP Streamable HTTP transport.
+
+```yaml
+backends:
+  remote-http:
+    type: streamable-http
+    url: "http://remote-host:8080/mcp"
+    auth:
+      type: oauth2
+      token_url: "https://auth.example.com/token"
+      client_id: "sentinel"
+      client_secret: "${OAUTH_SECRET}"
+      scopes: ["mcp:read", "mcp:write"]
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | `"streamable-http"` | — | **Required** |
+| `url` | string | — | **Required.** HTTP endpoint URL |
+| `headers` | map | `null` | Extra HTTP headers |
+| `auth` | object | `null` | [Outgoing auth](security/outgoing-auth.md) config |
+| `group` | string | `"default"` | Logical server group |
+| `timeouts` | object | defaults | Connection timeouts |
+| `filters` | object | defaults | Capability filters |
+| `tool_overrides` | map | `{}` | Per-tool name/description overrides |
+
+### Common Backend Options
+
+#### Timeouts
+
+```yaml
+timeouts:
+  init: 30        # MCP session initialization (seconds)
+  cap_fetch: 10   # Capability list fetch (seconds)
+  sse_startup: 5  # Wait for local SSE process to start (seconds)
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `init` | float | `null` (use global default: 15s) | MCP session init timeout |
+| `cap_fetch` | float | `null` (use global default: 10s) | Capability fetch timeout |
+| `sse_startup` | float | `null` (use global default: 5s) | Local SSE process startup wait |
+
+#### Filters
+
+Glob-based allow/deny lists for capability names. Applied per capability type.
+Deny takes precedence over allow.
+
+```yaml
+filters:
+  tools:
+    allow: ["search_*", "read_*"]
+    deny: ["dangerous_tool"]
+  resources:
+    allow: ["*"]
+  prompts:
+    deny: ["internal_*"]
+```
+
+#### Tool Overrides
+
+Rename or re-describe specific tools before they are exposed to clients:
+
+```yaml
+tool_overrides:
+  original_tool_name:
+    name: better_name
+    description: "A clearer description of what this tool does"
+```
+
+---
+
+## `conflict_resolution`
+
+Strategy for handling duplicate capability names across backends.
+
+```yaml
+conflict_resolution:
+  strategy: prefix        # first-wins | prefix | priority | error
+  separator: "_"
+  order: []
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `strategy` | string | `"first-wins"` | Resolution strategy (see below) |
+| `separator` | string | `"_"` | Separator for prefix strategy |
+| `order` | list[string] | `[]` | Backend priority for `priority` strategy |
+
+**Strategies:**
+
+| Strategy | Behavior |
+|----------|----------|
+| `first-wins` | First backend to register a name wins; duplicates are dropped |
+| `prefix` | Prefix capability with backend name: `backend_toolname` |
+| `priority` | Use `order` list to determine winner; others are dropped |
+| `error` | Raise `CapabilityConflictError` at startup |
+
+---
+
+## `audit`
+
+Structured audit logging (NIST SP 800-53 AU-3 aligned).
+
+```yaml
+audit:
+  enabled: true
+  file: "logs/audit.jsonl"
+  max_size_mb: 100
+  backup_count: 5
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable audit event logging |
+| `file` | string | `"logs/audit.jsonl"` | Path to JSONL audit log |
+| `max_size_mb` | integer | `100` | Max file size before rotation (≥1) |
+| `backup_count` | integer | `5` | Number of rotated backups (≥0) |
+
+See [Audit & Observability](audit.md) for event format and details.
+
+---
+
+## `optimizer`
+
+Replaces the full tool catalog with two meta-tools (`find_tool` and `call_tool`)
+for LLMs that struggle with large tool lists.
+
+```yaml
+optimizer:
+  enabled: false
+  keep_tools:
+    - important_tool
+    - another_tool
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable the tool optimizer |
+| `keep_tools` | list[string] | `[]` | Tools to always expose alongside meta-tools |
+
+When enabled, clients see only `find_tool`, `call_tool`, and any `keep_tools`.
+The LLM uses `find_tool` to search the tool index, then `call_tool` to invoke
+the selected tool.
+
+---
+
+## `incoming_auth`
+
+Authentication for incoming MCP client connections.
+
+```yaml
+incoming_auth:
+  type: jwt                              # anonymous | local | jwt | oidc
+  jwks_uri: "https://auth.example.com/.well-known/jwks.json"
+  issuer: "https://auth.example.com"
+  audience: "mcp-sentinel"
+  algorithms: ["RS256", "ES256"]
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `"anonymous"` | Auth type: `anonymous`, `local`, `jwt`, `oidc` |
+| `token` | string | `null` | Static bearer token (for `local` type). Supports `${ENV_VAR}` |
+| `jwks_uri` | string | `null` | JWKS URI for JWT key retrieval |
+| `issuer` | string | `null` | Expected JWT issuer claim. For OIDC: the issuer's base URL |
+| `audience` | string | `null` | Expected JWT audience claim |
+| `algorithms` | list[string] | `["RS256", "ES256"]` | Allowed JWT signing algorithms |
+
+**Auth Types:**
+
+| Type | Description |
+|------|-------------|
+| `anonymous` | No authentication — all clients accepted |
+| `local` | Static bearer token (constant-time comparison) |
+| `jwt` | JWT validation via JWKS (RS256/ES256) |
+| `oidc` | Auto-discovers JWKS from issuer's `/.well-known/openid-configuration` |
+
+See [Authentication](security/authentication.md) for details.
+
+---
+
+## `authorization`
+
+RBAC (Role-Based Access Control) policy enforcement.
+
+```yaml
+authorization:
+  enabled: true
+  default_effect: deny
+  policies:
+    - effect: allow
+      roles: ["admin"]
+      resources: ["*"]
+    - effect: allow
+      roles: ["reader"]
+      resources: ["tool:search_*", "resource:docs/*"]
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable RBAC policy enforcement |
+| `default_effect` | string | `"deny"` | Effect when no policy matches: `"allow"` or `"deny"` |
+| `policies` | list[object] | `[]` | Policy rules (see below) |
+
+**Policy Rule:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `effect` | string | `"allow"` or `"deny"` |
+| `roles` | list[string] | Roles this policy applies to (from JWT claims) |
+| `resources` | list[string] | Resource patterns: `"tool:<name>"`, `"resource:<uri>"`, `"prompt:<name>"`, `"server:<name>"`, `"group:<name>"`, `"*"` |
+| `description` | string | Optional human-readable description |
+
+See [Authorization](security/authorization.md) for details.
+
+---
+
+## `feature_flags`
+
+Boolean feature toggles.
+
+```yaml
+feature_flags:
+  hot_reload: true
+  optimizer: false
+```
+
+Recognized flags (from `config/flags.py` defaults):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `optimizer` | `false` | Enable the tool optimizer (find_tool / call_tool meta-tools) |
+| `hot_reload` | `true` | Enable config hot-reload via management API |
+| `outgoing_auth` | `true` | Enable outgoing authentication for backends |
+| `session_management` | `true` | Enable session management |
+| `yaml_config` | `true` | Enable YAML config file support |
+
+Unknown flag names are accepted for future-proofing and default to `false`.
+Config file watching is always active when a config path is provided — it is
+not controlled by a feature flag.
+
+---
+
+## Full Example
+
+See [example_config.yaml](../example_config.yaml) for a comprehensive,
+annotated configuration file covering all sections and options.

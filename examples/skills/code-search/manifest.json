@@ -1,0 +1,48 @@
+{
+  "name": "code-search",
+  "version": "1.0.0",
+  "description": "Search and analyze source code across configured MCP backends",
+  "author": "MCP Sentinel",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "search_code",
+      "backend": "code-index",
+      "description": "Full-text search across indexed source code repositories"
+    },
+    {
+      "name": "find_symbol",
+      "backend": "code-index",
+      "description": "Find symbol definitions (functions, classes, variables) by name"
+    },
+    {
+      "name": "list_files",
+      "backend": "code-index",
+      "description": "List files matching a glob pattern in the code index"
+    }
+  ],
+  "workflows": [
+    {
+      "name": "deep-search",
+      "description": "Search code and return matching files with context",
+      "steps": [
+        {
+          "id": "search",
+          "tool": "code-index.search_code",
+          "args": { "query": "${inputs.query}", "limit": 20 }
+        },
+        {
+          "id": "context",
+          "tool": "code-index.find_symbol",
+          "depends_on": ["search"],
+          "args": { "name": "${search.output.top_match}" }
+        }
+      ]
+    }
+  ],
+  "config": {
+    "max_results": 50,
+    "index_path": "/var/lib/mcp-sentinel/code-index"
+  },
+  "dependencies": []
+}

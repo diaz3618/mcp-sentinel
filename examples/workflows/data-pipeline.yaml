@@ -1,0 +1,43 @@
+# data-pipeline — simple three-stage ETL workflow
+#
+# Demonstrates linear step dependencies, input variable substitution,
+# and output template referencing a specific step's result.
+
+name: data-pipeline
+description: Fetch raw data, transform it, and store the result
+
+inputs:
+  source_url:
+    type: string
+    description: URL to fetch raw data from
+  format:
+    type: string
+    description: Target format (json, csv, parquet)
+
+steps:
+  - id: fetch
+    tool: http.get
+    description: Download raw data from the source URL
+    args:
+      url: "${inputs.source_url}"
+      timeout: 30
+
+  - id: transform
+    tool: transform.convert
+    description: Convert data to the requested format
+    depends_on: [fetch]
+    args:
+      data: "${fetch.output}"
+      target_format: "${inputs.format}"
+    retry: 2
+    on_error: fail
+
+  - id: store
+    tool: storage.put
+    description: Persist the transformed data
+    depends_on: [transform]
+    args:
+      content: "${transform.output}"
+      key: "pipeline/${inputs.format}/latest"
+
+output: "${store.output}"
