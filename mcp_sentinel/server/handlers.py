@@ -1,15 +1,44 @@
 """MCP handler functions - registered on the MCP server instance."""
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
 from mcp import types as mcp_types
 from mcp.server import Server as McpServer
 
-from mcp_sentinel.bridge.forwarder import forward_request
+from mcp_sentinel.bridge.middleware.chain import RequestContext
+from mcp_sentinel.bridge.optimizer.meta_tools import (
+    CALL_TOOL_NAME,
+    FIND_TOOL_NAME,
+    META_TOOLS,
+)
 from mcp_sentinel.errors import BackendServerError
 
 logger = logging.getLogger(__name__)
+
+
+async def _dispatch(
+    mcp_server: McpServer,
+    cap_name: str,
+    mcp_method: str,
+    arguments: Optional[Dict[str, Any]] = None,
+) -> Any:
+    """Route a request through the middleware chain."""
+    chain = getattr(mcp_server, "middleware_chain", None)
+    if chain is None:
+        raise RuntimeError(
+            "Middleware chain is not initialised on the MCP server instance."
+        )
+    ctx = RequestContext(
+        capability_name=cap_name,
+        mcp_method=mcp_method,
+        arguments=arguments,
+    )
+    result = await chain(ctx)
+    if ctx.error is not None:
+        raise ctx.error
+    return result
 
 
 def register_handlers(mcp_server: McpServer) -> None:
@@ -21,6 +50,22 @@ def register_handlers(mcp_server: McpServer) -> None:
         if not mcp_server.registry:
             raise BackendServerError("Registry is not initialized")
         tools = mcp_server.registry.get_aggregated_tools()
+
+        # If optimizer is active, return meta-tools + keep-list only
+        optimizer = getattr(mcp_server, "optimizer_index", None)
+        optimizer_enabled = getattr(mcp_server, "optimizer_enabled", False)
+        if optimizer_enabled and optimizer is not None:
+            keep_names = set(getattr(mcp_server, "optimizer_keep_list", []))
+            kept = [t for t in tools if t.name in keep_names]
+            result = list(META_TOOLS) + kept
+            logger.info(
+                "Returning %s tools (optimizer active: %d meta + %d kept)",
+                len(result),
+                len(META_TOOLS),
+                len(kept),
+            )
+            return result
+
         logger.info("Returning %s aggregated tools", len(tools))
         return tools
 
@@ -43,38 +88,61 @@ def register_handlers(mcp_server: McpServer) -> None:
         return prompts
 
     @mcp_server.call_tool()
-    async def handle_call_tool(
-        name: str, arguments: Dict[str, Any]
-    ) -> List[mcp_types.TextContent]:
+    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[mcp_types.TextContent]:
         logger.debug("Handling callTool: name='%s'", name)
-        result = await forward_request(
-            name, "call_tool", arguments, mcp_server.registry, mcp_server.manager
-        )
+
+        # Handle optimizer meta-tools
+        optimizer = getattr(mcp_server, "optimizer_index", None)
+        optimizer_enabled = getattr(mcp_server, "optimizer_enabled", False)
+
+        if optimizer_enabled and optimizer is not None:
+            if name == FIND_TOOL_NAME:
+                query = arguments.get("query", "")
+                limit = int(arguments.get("limit", 5))
+                results = optimizer.search(query, limit=limit)
+                return [
+                    mcp_types.TextContent(
+                        type="text",
+                        text=json.dumps(results, indent=2),
+                    )
+                ]
+
+            if name == CALL_TOOL_NAME:
+                # Delegate to the real tool via dispatch
+                real_name = arguments.get("name", "")
+                real_args = arguments.get("arguments", {})
+                if not real_name:
+                    raise BackendServerError("call_tool requires a 'name' argument")
+                logger.info("Optimizer call_tool dispatching to '%s'", real_name)
+                result = await _dispatch(mcp_server, real_name, "call_tool", real_args)
+                if isinstance(result, mcp_types.CallToolResult):
+                    return result.content
+                raise BackendServerError(
+                    f"Backend returned invalid type for tool call '{real_name}'."
+                )
+
+        result = await _dispatch(mcp_server, name, "call_tool", arguments)
         if isinstance(result, mcp_types.CallToolResult):
             return result.content
         logger.error(
-            "call_tool forwarding returned unexpected type: "
-            "%s for tool '%s'", type(result), name,
+            "call_tool forwarding returned unexpected type: " "%s for tool '%s'",
+            type(result),
+            name,
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for tool call '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for tool call '{name}'.")
 
     @mcp_server.read_resource()
     async def handle_read_resource(name: str) -> mcp_types.ReadResourceResult:
         logger.debug("Handling readResource: name='%s'", name)
-        result = await forward_request(
-            name, "read_resource", None, mcp_server.registry, mcp_server.manager
-        )
+        result = await _dispatch(mcp_server, name, "read_resource")
         if isinstance(result, mcp_types.ReadResourceResult):
             return result
         logger.error(
-            "read_resource forwarding returned unexpected type: "
-            "%s for resource '%s'", type(result), name,
+            "read_resource forwarding returned unexpected type: " "%s for resource '%s'",
+            type(result),
+            name,
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for resource read '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for resource read '{name}'.")
 
     @mcp_server.get_prompt()
     async def handle_get_prompt(
@@ -93,21 +161,14 @@ def register_handlers(mcp_server: McpServer) -> None:
                     exc_info=True,
                 )
 
-        result = await forward_request(
-            name,
-            "get_prompt",
-            typed_args or arguments,
-            mcp_server.registry,
-            mcp_server.manager,
-        )
+        result = await _dispatch(mcp_server, name, "get_prompt", typed_args or arguments)
         if isinstance(result, mcp_types.GetPromptResult):
             return result
         logger.error(
-            "get_prompt forwarding returned unexpected type: "
-            "%s for prompt '%s'", type(result), name,
+            "get_prompt forwarding returned unexpected type: " "%s for prompt '%s'",
+            type(result),
+            name,
         )
-        raise BackendServerError(
-            f"Backend returned invalid type for prompt '{name}'."
-        )
+        raise BackendServerError(f"Backend returned invalid type for prompt '{name}'.")
 
     logger.debug("All MCP protocol handlers registered on server instance.")
