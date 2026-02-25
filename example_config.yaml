@@ -1,0 +1,117 @@
+# MCP Sentinel — Example Configuration
+# Copy this file to config.yaml and edit to match your setup.
+# Documentation: docs/configuration.md
+#
+# Supported formats: YAML (.yaml, .yml) and JSON (.json)
+# Environment variables: use ${VAR_NAME} syntax for expansion
+# Secret references: use secret:my-key to resolve from the secret store
+
+version: "1"
+
+# ── Server Settings ──────────────────────────────────────────────────────
+server:
+  host: "127.0.0.1"
+  port: 9000
+  transport: streamable-http         # "sse" or "streamable-http"
+  management:
+    enabled: true
+    token: "${SENTINEL_MGMT_TOKEN}" # Bearer token for /manage/v1/ endpoints
+
+# ── Backend MCP Servers ──────────────────────────────────────────────────
+backends:
+  # Stdio backend — launches a local process
+  stdio_test:
+    type: stdio
+    command: python
+    args:
+      - mods/stdio_test_server.py
+    env:
+      PYTHONUNBUFFERED: "1"
+    group: default                  # logical server group
+    timeouts:
+      init: 15                      # MCP session init timeout (seconds)
+      cap_fetch: 10                 # capability fetch timeout
+    filters:
+      tools:
+        allow: ["*"]                # glob patterns
+        deny: []
+      resources:
+        allow: ["*"]
+        deny: []
+    tool_overrides:
+      original_tool_name:
+        name: renamed_tool          # client-facing name
+        description: "Override description"
+
+  # SSE backend — connects to a running SSE endpoint
+  sse_test:
+    type: sse
+    url: "http://127.0.0.1:8021/mcp_sse"
+    command: python                 # optional: launch the server process
+    args:
+      - mods/sse_test_server.py
+    env:
+      PYTHONUNBUFFERED: "1"
+    headers:                        # extra HTTP headers
+      X-Custom-Header: "value"
+    # auth:                         # outgoing authentication (optional)
+    #   type: oauth2
+    #   token_url: "https://auth.example.com/token"
+    #   client_id: "${OAUTH_CLIENT_ID}"
+    #   client_secret: "${OAUTH_CLIENT_SECRET}"
+    #   scopes: ["mcp:read", "mcp:write"]
+
+  # Streamable HTTP backend
+  # remote_server:
+  #   type: streamable-http
+  #   url: "https://mcp.example.com/mcp"
+  #   headers:
+  #     Authorization: "Bearer ${API_TOKEN}"
+
+# ── Conflict Resolution ─────────────────────────────────────────────────
+conflict_resolution:
+  strategy: first-wins              # "first-wins", "prefix", "priority", "error"
+  separator: "_"                    # for prefix strategy: "server_tool"
+  order: []                         # priority list for "priority" strategy
+
+# ── Audit Logging ────────────────────────────────────────────────────────
+audit:
+  enabled: true
+  file: "logs/audit.jsonl"
+  max_size_mb: 100
+  backup_count: 5
+
+# ── Tool Optimizer ───────────────────────────────────────────────────────
+optimizer:
+  enabled: false                    # replaces full tool list with find_tool + call_tool
+  keep_tools: []                    # tools always exposed alongside meta-tools
+
+# ── Incoming Authentication ──────────────────────────────────────────────
+incoming_auth:
+  type: anonymous                   # "anonymous", "local", "jwt", "oidc"
+  # token: "${MCP_AUTH_TOKEN}"      # for "local" type
+  # jwks_uri: "https://..."        # for "jwt" type
+  # issuer: "https://..."          # for "jwt"/"oidc" type
+  # audience: "mcp-sentinel"       # expected JWT audience
+  # algorithms: ["RS256", "ES256"]
+
+# ── Authorization (RBAC) ────────────────────────────────────────────────
+authorization:
+  enabled: false
+  default_effect: deny              # "allow" or "deny" when no policy matches
+  policies:
+    - effect: allow
+      roles: ["admin"]
+      resources: ["*"]
+    # - effect: deny
+    #   roles: ["viewer"]
+    #   resources: ["tool:dangerous_*"]
+
+# ── Feature Flags ────────────────────────────────────────────────────────
+# See config/flags.py for all recognized flags and their defaults.
+feature_flags:
+  hot_reload: true                  # default: true
+  optimizer: false                  # default: false
+  # outgoing_auth: true             # default: true
+  # session_management: true        # default: true
+  # yaml_config: true               # default: true

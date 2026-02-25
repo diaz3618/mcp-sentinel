@@ -12,6 +12,12 @@ DEFAULT_PORT = 9000
 SSE_PATH = "/sse"
 POST_MESSAGES_PATH = "/messages/"
 
+# Streamable HTTP transport path
+STREAMABLE_HTTP_PATH = "/mcp"
+
+# Management API
+MANAGEMENT_API_PREFIX = "/manage/v1"
+
 # Logging defaults
 LOG_DIR = "logs"
 DEFAULT_LOG_FILE = "unknown_sentinel.log"

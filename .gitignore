@@ -124,6 +124,9 @@ __pypackages__/
 celerybeat-schedule
 celerybeat.pid
 
+# PID files
+*.pid
+
 # SageMath parsed files
 *.sage.py
 
@@ -176,6 +179,8 @@ cython_debug/
 .pypirc
 config.json
 .vscode
-.github/copilot-instructions.md
-.codex/
-docs/**
+logs/*
+
+# Session metadata
+.sentinel/
+docs/public/
