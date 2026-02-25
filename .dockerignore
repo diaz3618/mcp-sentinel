@@ -1,0 +1,47 @@
+# ── Build / cache artifacts ──
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+mcp_sentinel.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# ── Development / IDE ──
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+.codex/
+.gemini/
+
+# ── Documentation & planning ──
+docs/
+memory-bank/
+img/
+internal/
+reports/
+repos/
+mods/
+
+# ── Logs & runtime artifacts ──
+logs/
+pids/
+.sentinel/
+*.log
+*.pid
+
+# ── Misc ──
+LICENSE
+README.md
+CHANGELOG.md
+*.md
+Dockerfile
+.dockerignore
+docker-compose*.yml

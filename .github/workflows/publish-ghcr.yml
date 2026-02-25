@@ -1,0 +1,94 @@
+# Publish Docker image to GitHub Container Registry (GHCR)
+#
+# Triggers:
+#   - Push a tag matching v* (e.g. v0.1.0, v1.2.3-rc1)
+#   - Manual dispatch (workflow_dispatch)
+#
+# Images are published to:
+#   ghcr.io/<owner>/mcp-sentinel:<tag>
+#   ghcr.io/<owner>/mcp-sentinel:latest
+#   ghcr.io/<owner>/mcp-sentinel:sha-<short>
+
+name: Publish GHCR
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag override (leave empty to use branch/SHA)"
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/mcp-sentinel
+
+jobs:
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ──────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── Docker Buildx (multi-platform) ───────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── QEMU (for arm64 cross-compilation) ───────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # ── Login to GHCR ────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Extract metadata (tags + labels) ─────────
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # On version tag push: v1.2.3 → 1.2.3, latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # On manual dispatch with override
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            # Always: sha-<short>
+            type=sha,prefix=sha-
+            # latest on default branch tag push
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      # ── Build & Push ─────────────────────────────
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Summary ──────────────────────────────────
+      - name: Image digest
+        run: |
+          echo "## 🐳 Published to GHCR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '${{ steps.meta.outputs.tags }}' | tr ',' '\n' | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
