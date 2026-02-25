@@ -10,6 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
 
 try:
     import httpx
@@ -52,7 +53,9 @@ async def _log_subproc_stream(
         except Exception as e_stream:
             logger.error(
                 "[%s-%s] Error while reading stream: %s",
-                svr_name, stream_name, e_stream,
+                svr_name,
+                stream_name,
+                e_stream,
                 exc_info=True,
             )
             break
@@ -77,7 +80,9 @@ async def _manage_subproc(
 
         logger.info(
             "[%s] Preparing to start local process: '%s' args: %s",
-            svr_name, actual_cmd, args,
+            svr_name,
+            actual_cmd,
+            args,
         )
 
         current_env = os.environ.copy()
@@ -108,14 +113,16 @@ async def _manage_subproc(
     except FileNotFoundError:
         logger.error(
             "[%s] Failed to start local process: command '%s' not found.",
-            svr_name, actual_cmd,
+            svr_name,
+            actual_cmd,
             exc_info=True,
         )
         raise
     except Exception:
         logger.error(
             "[%s] Unexpected error starting local process '%s'.",
-            svr_name, actual_cmd,
+            svr_name,
+            actual_cmd,
             exc_info=True,
         )
         raise
@@ -126,46 +133,48 @@ async def _manage_subproc(
             stderr_log_task.cancel()
 
         if stdout_log_task or stderr_log_task:
-            await asyncio.gather(
-                stdout_log_task, stderr_log_task, return_exceptions=True
-            )
+            await asyncio.gather(stdout_log_task, stderr_log_task, return_exceptions=True)
             logger.debug("[%s] Subprocess stream logging tasks completed.", svr_name)
 
         if process and process.returncode is None:
             logger.info(
                 "[%s] Attempting to terminate local process (PID: %s)...",
-                svr_name, process.pid,
+                svr_name,
+                process.pid,
             )
             try:
                 process.terminate()
                 await asyncio.wait_for(process.wait(), timeout=3.0)
                 logger.info(
                     "[%s] Local process (PID: %s) terminated successfully.",
-                    svr_name, process.pid,
+                    svr_name,
+                    process.pid,
                 )
             except asyncio.TimeoutError:
                 logger.warning(
-                    "[%s] Timeout while terminating local process "
-                    "(PID: %s), trying kill...",
-                    svr_name, process.pid,
+                    "[%s] Timeout while terminating local process " "(PID: %s), trying kill...",
+                    svr_name,
+                    process.pid,
                 )
                 process.kill()
                 await process.wait()
                 logger.info(
                     "[%s] Local process (PID: %s) was force-killed.",
-                    svr_name, process.pid,
+                    svr_name,
+                    process.pid,
                 )
             except ProcessLookupError:
                 logger.warning(
-                    "[%s] Local process not found while terminating "
-                    "(PID: %s).",
-                    svr_name, process.pid,
+                    "[%s] Local process not found while terminating " "(PID: %s).",
+                    svr_name,
+                    process.pid,
                 )
             except Exception as e_term:
                 logger.error(
-                    "[%s] Error terminating local process "
-                    "(PID: %s): %s",
-                    svr_name, process.pid, e_term,
+                    "[%s] Error terminating local process " "(PID: %s): %s",
+                    svr_name,
+                    process.pid,
+                    e_term,
                     exc_info=True,
                 )
 
@@ -183,26 +192,34 @@ def _log_backend_fail(
     elif isinstance(e, ConfigurationError):
         logger.error(
             "[%s] (%s) Configuration error during %s: %s",
-            svr_name, svr_type_str, context, e,
+            svr_name,
+            svr_type_str,
+            context,
+            e,
         )
-    elif isinstance(
-        e, (*SSE_NET_EXCS, ConnectionRefusedError, BrokenPipeError, ConnectionError)
-    ):
+    elif isinstance(e, (*SSE_NET_EXCS, ConnectionRefusedError, BrokenPipeError, ConnectionError)):
         logger.error(
-            "[%s] (%s) Network/connection error during "
-            "%s: %s: %s",
-            svr_name, svr_type_str, context, type(e).__name__, e,
+            "[%s] (%s) Network/connection error during " "%s: %s: %s",
+            svr_name,
+            svr_type_str,
+            context,
+            type(e).__name__,
+            e,
         )
     elif isinstance(e, FileNotFoundError):
         logger.error(
-            "[%s] (local launch %s) Command or file not found "
-            "'%s' during %s.",
-            svr_name, svr_type_str, e.filename, context,
+            "[%s] (local launch %s) Command or file not found " "'%s' during %s.",
+            svr_name,
+            svr_type_str,
+            e.filename,
+            context,
         )
     else:
         logger.exception(
             "[%s] (%s) Unexpected fatal error during %s.",
-            svr_name, svr_type_str, context,
+            svr_name,
+            svr_type_str,
+            context,
         )
 
 
@@ -214,6 +231,7 @@ class ClientManager:
         self._pending_tasks: Dict[str, asyncio.Task] = {}
         self._exit_stack = AsyncExitStack()
         self._devnull_files: list = []  # keep refs so GC doesn't close them early
+        self._status_records: Dict[str, Any] = {}  # BackendStatusRecord instances
         logger.info("ClientManager initialized.")
 
     async def _init_stdio_backend(
@@ -244,6 +262,8 @@ class ClientManager:
         sse_cmd: Optional[str],
         sse_cmd_args: List[str],
         sse_cmd_env: Optional[Dict[str, str]],
+        sse_startup_delay: float = SSE_LOCAL_START_DELAY,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[Any, ClientSession]:
         """Initialize and connect to an SSE backend; launch command first if configured."""
         if sse_cmd:
@@ -256,11 +276,12 @@ class ClientManager:
             )
             logger.info(
                 "[%s] Waiting %ss for local SSE server startup...",
-                svr_name, SSE_LOCAL_START_DELAY,
+                svr_name,
+                sse_startup_delay,
             )
-            await asyncio.sleep(SSE_LOCAL_START_DELAY)
+            await asyncio.sleep(sse_startup_delay)
 
-        transport_ctx = sse_client(url=sse_url)
+        transport_ctx = sse_client(url=sse_url, headers=headers)
         streams = await self._exit_stack.enter_async_context(transport_ctx)
         logger.debug("[%s] (sse) transport streams established.", svr_name)
 
@@ -268,21 +289,49 @@ class ClientManager:
         session = await self._exit_stack.enter_async_context(session_ctx)
         return transport_ctx, session
 
-    async def _start_backend_svr(
-        self, svr_name: str, svr_conf: Dict[str, Any]
-    ) -> bool:
+    async def _init_streamablehttp_backend(
+        self,
+        svr_name: str,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Tuple[Any, ClientSession]:
+        """Initialize and connect to a streamable-http backend server."""
+        logger.debug("[%s] Streamable-HTTP backend, url=%s", svr_name, url)
+        transport_ctx = streamablehttp_client(url=url, headers=headers)
+        read_stream, write_stream, _get_session_id = await self._exit_stack.enter_async_context(
+            transport_ctx
+        )
+        logger.debug("[%s] (streamable-http) transport streams established.", svr_name)
+
+        session_ctx = ClientSession(read_stream, write_stream)
+        session = await self._exit_stack.enter_async_context(session_ctx)
+        return transport_ctx, session
+
+    async def _start_backend_svr(self, svr_name: str, svr_conf: Dict[str, Any]) -> bool:
         """Start and initialize a single backend server connection."""
         svr_type = svr_conf.get("type")
         logger.info("[%s] Attempting connection, type: %s...", svr_name, svr_type)
         session: Optional[ClientSession] = None
 
+        # Create status record and transition PENDING → INITIALIZING
+        from mcp_sentinel.runtime.models import BackendPhase, BackendStatusRecord
+
+        record = BackendStatusRecord(name=svr_name)
+        self._status_records[svr_name] = record
         try:
+            record.transition(BackendPhase.INITIALIZING, f"Connecting ({svr_type})")
+        except ValueError:
+            pass
+
+        try:
+            # Resolve outgoing-auth headers (if configured)
+            auth_headers = await self._resolve_auth_headers(svr_name, svr_conf)
+
             if svr_type == "stdio":
                 stdio_params = svr_conf.get("params")
                 if not isinstance(stdio_params, StdioServerParameters):
                     raise ConfigurationError(
-                        f"Invalid stdio config for server '{svr_name}' "
-                        "('params' type mismatch)."
+                        f"Invalid stdio config for server '{svr_name}' " "('params' type mismatch)."
                     )
                 _, session = await self._init_stdio_backend(svr_name, stdio_params)
 
@@ -292,44 +341,72 @@ class ClientManager:
                     raise ConfigurationError(
                         f"Invalid SSE 'url' configuration for server '{svr_name}'."
                     )
+                # Merge static headers from config with auth-provider headers
+                sse_headers = _merge_headers(svr_conf.get("headers"), auth_headers)
                 _, session = await self._init_sse_backend(
                     svr_name,
                     sse_url,
                     svr_conf.get("command"),
                     svr_conf.get("args", []),
                     svr_conf.get("env"),
+                    sse_startup_delay=svr_conf.get("sse_startup_delay", SSE_LOCAL_START_DELAY),
+                    headers=sse_headers,
                 )
+
+            elif svr_type == "streamable-http":
+                sh_url = svr_conf.get("url")
+                if not isinstance(sh_url, str) or not sh_url:
+                    raise ConfigurationError(
+                        f"Invalid streamable-http 'url' configuration " f"for server '{svr_name}'."
+                    )
+                sh_headers = _merge_headers(svr_conf.get("headers"), auth_headers)
+                _, session = await self._init_streamablehttp_backend(svr_name, sh_url, sh_headers)
+
             else:
                 raise ConfigurationError(
                     f"Unsupported server type '{svr_type}' for server '{svr_name}'."
                 )
 
             if not session:
-                raise BackendServerError(
-                    f"[{svr_name}] ({svr_type}) Session could not be created."
-                )
+                raise BackendServerError(f"[{svr_name}] ({svr_type}) Session could not be created.")
 
+            init_timeout = svr_conf.get("init_timeout", MCP_INIT_TIMEOUT)
             logger.info(
                 "[%s] Initializing MCP connection (timeout: %ss)...",
-                svr_name, MCP_INIT_TIMEOUT,
+                svr_name,
+                init_timeout,
             )
-            await asyncio.wait_for(session.initialize(), timeout=MCP_INIT_TIMEOUT)
+            await asyncio.wait_for(session.initialize(), timeout=init_timeout)
 
             self._sessions[svr_name] = session
             logger.info(
                 "\u2705 MCP connection initialized for server '%s' (%s).",
-                svr_name, svr_type,
+                svr_name,
+                svr_type,
             )
+            try:
+                record.transition(BackendPhase.READY, "Connection established")
+            except ValueError:
+                pass
             return True
 
         except asyncio.CancelledError:
             logger.warning(
                 "[%s] (%s) startup task cancelled.",
-                svr_name, svr_type or 'unknown type',
+                svr_name,
+                svr_type or "unknown type",
             )
+            try:
+                record.transition(BackendPhase.FAILED, "Startup cancelled")
+            except ValueError:
+                pass
             return False
         except Exception as e_start:
             _log_backend_fail(svr_name, svr_type, e_start, context="connect/initialize")
+            try:
+                record.transition(BackendPhase.FAILED, str(e_start))
+            except ValueError:
+                pass
             return False
 
     async def start_all(self, config_data: Dict[str, Dict[str, Any]]) -> None:
@@ -346,15 +423,14 @@ class ClientManager:
             self._pending_tasks[svr_name] = task
 
         if self._pending_tasks:
-            results = await asyncio.gather(
-                *self._pending_tasks.values(), return_exceptions=True
-            )
+            results = await asyncio.gather(*self._pending_tasks.values(), return_exceptions=True)
             for svr_name, result in zip(self._pending_tasks.keys(), results):
                 if isinstance(result, Exception):
                     logger.error(
                         "[%s] Startup task failed with exception '%s' "
                         "(details logged in _start_backend_svr).",
-                        svr_name, type(result).__name__,
+                        svr_name,
+                        type(result).__name__,
                     )
                 elif result is False:
                     logger.warning(
@@ -368,21 +444,28 @@ class ClientManager:
         active_svrs_count = len(self._sessions)
         total_svrs_count = len(config_data)
         logger.info(
-            "All backend startup attempts completed. "
-            "Active servers: %s/%s",
-            active_svrs_count, total_svrs_count,
+            "All backend startup attempts completed. " "Active servers: %s/%s",
+            active_svrs_count,
+            total_svrs_count,
         )
         if active_svrs_count < total_svrs_count:
             logger.warning(
-                "Some backend servers failed to start/connect. "
-                "Check file logs for details."
+                "Some backend servers failed to start/connect. " "Check file logs for details."
             )
 
     async def stop_all(self) -> None:
         """Close all active sessions and subprocesses started by the manager."""
-        logger.info(
-            "Stopping all backend connections and local processes (via AsyncExitStack)..."
-        )
+        logger.info("Stopping all backend connections and local processes (via AsyncExitStack)...")
+
+        # Transition operational backends to SHUTTING_DOWN
+        from mcp_sentinel.runtime.models import BackendPhase
+
+        for name, rec in self._status_records.items():
+            if rec.is_operational:
+                try:
+                    rec.transition(BackendPhase.SHUTTING_DOWN, "Graceful shutdown")
+                except ValueError:
+                    pass
 
         if self._pending_tasks:
             logger.info(
@@ -392,20 +475,15 @@ class ClientManager:
             for task in self._pending_tasks.values():
                 if not task.done():
                     task.cancel()
-            await asyncio.gather(
-                *self._pending_tasks.values(), return_exceptions=True
-            )
+            await asyncio.gather(*self._pending_tasks.values(), return_exceptions=True)
             self._pending_tasks.clear()
             logger.info("Pending startup tasks cancelled and cleaned up.")
 
-        logger.info(
-            "Calling AsyncExitStack.aclose() to clean up managed resources..."
-        )
+        logger.info("Calling AsyncExitStack.aclose() to clean up managed resources...")
         try:
             await self._exit_stack.aclose()
             logger.info(
-                "AsyncExitStack closed all managed contexts "
-                "(connections and subprocesses)."
+                "AsyncExitStack closed all managed contexts " "(connections and subprocesses)."
             )
         except Exception as e_aclose:
             logger.exception(
@@ -437,3 +515,56 @@ class ClientManager:
     def get_all_sessions(self) -> Dict[str, ClientSession]:
         """Get a dictionary copy of all active sessions."""
         return self._sessions.copy()
+
+    # ── Status records ───────────────────────────────────────────────────
+
+    def get_status_record(self, svr_name: str) -> Optional[Any]:
+        """Get the status record for a backend (or ``None``)."""
+        return self._status_records.get(svr_name)
+
+    def get_all_status_records(self) -> Dict[str, Any]:
+        """Return a snapshot of all status records."""
+        return dict(self._status_records)
+
+    # ── Outgoing authentication ──────────────────────────────────────
+
+    async def _resolve_auth_headers(
+        self, svr_name: str, svr_conf: Dict[str, Any]
+    ) -> Optional[Dict[str, str]]:
+        """Resolve outgoing-auth headers for a backend, if configured."""
+        auth_cfg = svr_conf.get("auth")
+        if not auth_cfg:
+            return None
+        try:
+            from mcp_sentinel.bridge.auth.provider import create_auth_provider
+
+            provider = create_auth_provider(auth_cfg)
+            headers = await provider.get_headers()
+            logger.info("[%s] Auth provider resolved: %s", svr_name, provider.redacted_repr())
+            return headers
+        except Exception as exc:
+            logger.error("[%s] Failed to resolve auth headers: %s", svr_name, exc)
+            return None
+
+
+# ── Module-level helpers ─────────────────────────────────────────────────
+
+
+def _merge_headers(
+    static: Optional[Dict[str, str]],
+    auth: Optional[Dict[str, str]],
+) -> Optional[Dict[str, str]]:
+    """Merge static config headers with auth-provider headers.
+
+    Auth-provider headers take precedence over static ones (e.g. a
+    provider-managed ``Authorization`` header overrides a static one).
+    Returns ``None`` when both inputs are ``None``.
+    """
+    if not static and not auth:
+        return None
+    merged: Dict[str, str] = {}
+    if static:
+        merged.update(static)
+    if auth:
+        merged.update(auth)
+    return merged
