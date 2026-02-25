@@ -4,21 +4,65 @@ import copy
 import logging
 import logging.config
 import os
+import re
 import sys
 from datetime import datetime
-from typing import Tuple
+from typing import Set, Tuple  # noqa: UP035
 
 from mcp_sentinel.constants import LOG_DIR
+
+# ── Secret redaction filter ──────────────────────────────────────────────
+
+_REDACTED = "***REDACTED***"
+
+
+class SecretRedactionFilter(logging.Filter):
+    """Logging filter that replaces resolved secret values with a placeholder.
+
+    Call :meth:`register` to add values that should be scrubbed.  Thread-safe
+    because CPython's GIL protects set reads against concurrent adds.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._secrets: Set[str] = set()
+        self._pattern: re.Pattern[str] | None = None
+
+    def register(self, value: str) -> None:
+        """Register a secret value for redaction."""
+        if value and len(value) >= 4:  # skip trivially short values
+            self._secrets.add(value)
+            # Rebuild regex pattern with longest-first ordering
+            escaped = sorted((re.escape(s) for s in self._secrets), key=len, reverse=True)
+            self._pattern = re.compile("|".join(escaped))
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if self._pattern is not None:
+            if isinstance(record.msg, str):
+                record.msg = self._pattern.sub(_REDACTED, record.msg)
+            if record.args:
+                if isinstance(record.args, dict):
+                    record.args = {
+                        k: self._pattern.sub(_REDACTED, str(v)) if isinstance(v, str) else v
+                        for k, v in record.args.items()
+                    }
+                elif isinstance(record.args, tuple):
+                    record.args = tuple(
+                        self._pattern.sub(_REDACTED, str(a)) if isinstance(a, str) else a
+                        for a in record.args
+                    )
+        return True
+
+
+# Module-level singleton so resolver can register values at resolve time.
+secret_redaction_filter = SecretRedactionFilter()
 
 BASE_LOG_CFG = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "simple_file": {
-            "format": (
-                "%(asctime)s - %(name)25s:%(lineno)-4d - "
-                "%(levelname)-7s - %(message)s"
-            ),
+            "format": ("%(asctime)s - %(name)25s:%(lineno)-4d - " "%(levelname)-7s - %(message)s"),
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -142,16 +186,16 @@ def setup_logging(log_lvl_str: str, *, quiet: bool = False) -> Tuple[str, str]:
     log_cfg["loggers"]["uvicorn.access"]["level"] = (
         "INFO" if log_lvl_valid == "DEBUG" else "WARNING"
     )
-    log_cfg["root"]["level"] = (
-        log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
-    )
+    log_cfg["root"]["level"] = log_lvl_valid if log_lvl_valid == "DEBUG" else "WARNING"
 
     try:
         logging.config.dictConfig(log_cfg)
+        # Attach secret redaction filter to all handlers
+        for handler in logging.root.handlers:
+            handler.addFilter(secret_redaction_filter)
         if not quiet:
             print(
-                f"Logging initialized. File log level: {log_lvl_valid}, "
-                f"log file: {log_fpath}"
+                f"Logging initialized. File log level: {log_lvl_valid}, " f"log file: {log_fpath}"
             )
     except Exception as e_log_cfg:
         if not quiet:

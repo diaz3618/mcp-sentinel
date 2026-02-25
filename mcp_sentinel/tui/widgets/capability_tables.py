@@ -23,6 +23,17 @@ def _trunc(text: str | None, max_len: int = 80) -> str:
     return first_line
 
 
+def _attr_or_key(obj: Any, key: str, default: Any = None) -> Any:
+    """Get a value from *obj* whether it is a dict or an object with attrs.
+
+    This lets ``populate()`` work with both MCP SDK objects
+    (in-process mode) and plain dicts returned by the management API.
+    """
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 class CapabilitySection(Widget):
     """Tabbed view of Tools / Resources / Prompts DataTables."""
 
@@ -91,19 +102,25 @@ class CapabilitySection(Widget):
         prompts: List[Any],
         route_map: Optional[Dict[str, Tuple[str, str]]] = None,
     ) -> None:
-        """Fill all three tables from MCP type lists."""
+        """Fill all three tables from MCP type lists or API dicts.
+
+        Items may be either MCP SDK objects (with ``.name``, ``.description``
+        attributes) or plain dicts returned by the management API.
+        """
         rmap = route_map or {}
 
         # Tools
         dt_tools = self.query_one("#dt-tools", DataTable)
         dt_tools.clear()
         for t in tools:
-            server = rmap.get(t.name, ("—", ""))[0]
+            name = _attr_or_key(t, "name", "—")
+            server = rmap.get(name, ("—", ""))[0]
+            desc = _attr_or_key(t, "description")
             dt_tools.add_row(
-                t.name,
+                name,
                 server,
-                _trunc(t.description),
-                key=t.name,
+                _trunc(desc),
+                key=name,
             )
         self.tools_count = len(tools)
 
@@ -111,15 +128,17 @@ class CapabilitySection(Widget):
         dt_res = self.query_one("#dt-resources", DataTable)
         dt_res.clear()
         for r in resources:
-            server = rmap.get(r.name, ("—", ""))[0]
-            uri = getattr(r, "uri", r.name)
-            mime = getattr(r, "mimeType", None) or "—"
+            name = _attr_or_key(r, "name", "—")
+            server = rmap.get(name, ("—", ""))[0]
+            uri = _attr_or_key(r, "uri", name)
+            mime = _attr_or_key(r, "mimeType") or _attr_or_key(r, "mime_type") or "—"
+            desc = _attr_or_key(r, "description")
             dt_res.add_row(
                 str(uri),
                 server,
-                _trunc(r.description) if hasattr(r, "description") else "—",
+                _trunc(desc) if desc else "—",
                 mime,
-                key=r.name,
+                key=name,
             )
         self.resources_count = len(resources)
 
@@ -127,14 +146,21 @@ class CapabilitySection(Widget):
         dt_prompts = self.query_one("#dt-prompts", DataTable)
         dt_prompts.clear()
         for p in prompts:
-            server = rmap.get(p.name, ("—", ""))[0]
-            args_list = getattr(p, "arguments", None) or []
-            args_str = ", ".join(a.name for a in args_list) if args_list else "—"
+            name = _attr_or_key(p, "name", "—")
+            server = rmap.get(name, ("—", ""))[0]
+            desc = _attr_or_key(p, "description")
+            args_raw = _attr_or_key(p, "arguments") or []
+            if args_raw:
+                # Handle both objects with .name and dicts with "name"
+                arg_names = [_attr_or_key(a, "name", str(a)) for a in args_raw]
+                args_str = ", ".join(arg_names)
+            else:
+                args_str = "—"
             dt_prompts.add_row(
-                p.name,
+                name,
                 server,
-                _trunc(p.description) if hasattr(p, "description") else "—",
+                _trunc(desc) if desc else "—",
                 args_str,
-                key=p.name,
+                key=name,
             )
         self.prompts_count = len(prompts)

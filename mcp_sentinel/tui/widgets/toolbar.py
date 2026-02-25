@@ -71,8 +71,16 @@ class ToolbarWidget(Widget):
     """
 
     def compose(self) -> ComposeResult:
+        # ── Modes ──
+        yield Label(" Modes: ", classes="_cat-label")
+        yield _ToolbarAction("[1] Dashboard", "switch_mode('dashboard')")
+        yield _ToolbarAction("[2] Tools", "switch_mode('tools')")
+        yield _ToolbarAction("[3] Registry", "switch_mode('registry')")
+        yield _ToolbarAction("[4] Settings", "switch_mode('settings')")
+        yield _ToolbarSep()
+
         # ── Server ──
-        yield Label(" Server: ", classes="_cat-label")
+        yield Label("Server: ", classes="_cat-label")
         yield _ToolbarAction("Quit", "quit")
         yield _ToolbarAction("Details", "_tb_server_details")
         yield _ToolbarSep()

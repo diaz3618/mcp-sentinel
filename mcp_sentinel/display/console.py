@@ -2,9 +2,8 @@
 
 import logging
 import os
-import threading
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mcp import types as mcp_types
 
@@ -15,43 +14,10 @@ from mcp_sentinel.constants import (
     SERVER_NAME,
     SERVER_VERSION,
     SSE_PATH,
+    STREAMABLE_HTTP_PATH,
 )
 
 logger = logging.getLogger(__name__)
-
-# ── Status callback system ──────────────────────────────────────
-# When a TUI callback is registered, status updates are forwarded
-# to the TUI instead of printing to stdout.
-
-StatusCallback = Callable[[str, Dict[str, Any], bool], None]
-
-_callback_lock = threading.Lock()
-_status_callback: Optional[StatusCallback] = None
-_suppress_console: bool = False
-
-
-def set_status_callback(
-    callback: StatusCallback, suppress_console: bool = True
-) -> None:
-    """Register a callback that receives every status update.
-
-    Args:
-        callback: ``(stage, status_info, is_final) -> None``
-        suppress_console: If *True*, ``disp_console_status`` will not
-            print to stdout while the callback is active (TUI mode).
-    """
-    global _status_callback, _suppress_console
-    with _callback_lock:
-        _status_callback = callback
-        _suppress_console = suppress_console
-
-
-def clear_status_callback() -> None:
-    """Remove the active status callback."""
-    global _status_callback, _suppress_console
-    with _callback_lock:
-        _status_callback = None
-        _suppress_console = False
 
 
 def gen_status_info(
@@ -85,11 +51,15 @@ def gen_status_info(
             else DEFAULT_LOG_LEVEL
         ),
         "sse_url": f"http://{host}:{port}{SSE_PATH}" if port > 0 else "N/A",
-        "cfg_fpath": (
-            getattr(app_state, "config_file_path", "N/A")
-            if app_state
-            else "N/A"
+        "streamable_http_url": (
+            f"http://{host}:{port}{STREAMABLE_HTTP_PATH}" if port > 0 else "N/A"
         ),
+        "transport_type": (
+            getattr(app_state, "transport_type", "streamable-http")
+            if app_state
+            else "streamable-http"
+        ),
+        "cfg_fpath": (getattr(app_state, "config_file_path", "N/A") if app_state else "N/A"),
         "err_msg": err_msg,
         "tools": tools or [],
         "resources": resources or [],
@@ -110,29 +80,8 @@ def gen_status_info(
     return info
 
 
-def disp_console_status(
-    stage: str, status_info: Dict[str, Any], is_final: bool = False
-) -> None:
-    """Print formatted status information to the console.
-
-    When a TUI callback is registered via ``set_status_callback``,
-    the update is forwarded there instead of (or in addition to) stdout.
-    """
-    # Forward to registered callback (TUI mode)
-    with _callback_lock:
-        cb = _status_callback
-        suppress = _suppress_console
-
-    if cb is not None:
-        try:
-            cb(stage, status_info, is_final)
-        except Exception:
-            logger.debug("Status callback error", exc_info=True)
-
-    # If console output is suppressed (TUI active), skip printing
-    if suppress:
-        return
-
+def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool = False) -> None:
+    """Print formatted status information to the console (headless mode)."""
     header = f" MCP Sentinel v{SERVER_VERSION} (by {AUTHOR}) "
     sep_char = "="
     line_len = 70
@@ -147,18 +96,17 @@ def disp_console_status(
             if hasattr(disp_console_status, "header_printed"):
                 delattr(disp_console_status, "header_printed")
 
-    print(
-        f"[{status_info['ts']}] {stage} Status: {status_info['status_msg']}"
-    )
+    print(f"[{status_info['ts']}] {stage} Status: {status_info['status_msg']}")
 
     if not is_final and stage == "Initialization":
         print(f"    Server Name: {SERVER_NAME}")
-        print(f"    SSE URL: {status_info['sse_url']}")
+        transport = status_info.get("transport_type", "streamable-http")
+        if transport == "streamable-http":
+            print(f"    Endpoint (streamable-http): {status_info['streamable_http_url']}")
+        else:
+            print(f"    Endpoint (sse): {status_info['sse_url']}")
         print(f"    Config File: {os.path.basename(status_info['cfg_fpath'])}")
-        print(
-            f"    Log File: {status_info['log_fpath']} "
-            f"(level: {status_info['log_lvl_cfg']})"
-        )
+        print(f"    Log File: {status_info['log_fpath']} " f"(level: {status_info['log_lvl_cfg']})")
 
     if "total_svrs_num" in status_info and "conn_svrs_num" in status_info:
         print(
@@ -184,14 +132,14 @@ def disp_console_status(
         print(f"{sep_char * line_len}\n")
 
 
-def log_file_status(
-    status_info: Dict[str, Any], log_lvl: int = logging.INFO
-) -> None:
+def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO) -> None:
     """Write detailed status information to the log file."""
     log_lines = [
         f"Server Status Update: {status_info['status_msg']}",
         f"  Author: {AUTHOR}",
         f"  SSE URL: {status_info['sse_url']}",
+        f"  Streamable HTTP URL: {status_info.get('streamable_http_url', 'N/A')}",
+        f"  Transport: {status_info.get('transport_type', 'streamable-http')}",
         f"  Config File Used: {status_info['cfg_fpath']}",
         f"  Configured File Log Level: {status_info['log_lvl_cfg']}",
         f"  Actual Log File: {status_info['log_fpath']}",
@@ -210,18 +158,11 @@ def log_file_status(
         ("Prompts", "prompts_count", "prompts"),
     ]:
         if cap_key_count in status_info:
-            log_lines.append(
-                f"  Loaded MCP {cap_type_plural} "
-                f"({status_info[cap_key_count]}):"
-            )
+            log_lines.append(f"  Loaded MCP {cap_type_plural} " f"({status_info[cap_key_count]}):")
             cap_list = status_info.get(cap_list_key, [])
             if cap_list:
                 for item in cap_list:
-                    desc = (
-                        item.description.strip().split("\n")[0]
-                        if item.description
-                        else "-"
-                    )
+                    desc = item.description.strip().split("\n")[0] if item.description else "-"
                     log_lines.append(f"    - {item.name}, Description: {desc}")
             elif status_info[cap_key_count] > 0:
                 log_lines.append(

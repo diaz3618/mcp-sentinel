@@ -92,16 +92,12 @@ class ThemeScreen(ModalScreen[str | None]):
         except OptionList.OptionDoesNotExist:
             pass
 
-    def on_option_list_option_highlighted(
-        self, event: OptionList.OptionHighlighted
-    ) -> None:
+    def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
         """Live-preview themes as the user navigates."""
         if event.option.id and event.option.id in self.app.available_themes:
             self.app.theme = event.option.id
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Apply the selected theme and dismiss."""
         theme_name = event.option.id
         if theme_name and theme_name in self.app.available_themes:

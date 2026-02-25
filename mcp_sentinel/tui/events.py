@@ -1,25 +1,10 @@
-"""Custom Textual messages for MCP Sentinel status updates."""
+"""Custom Textual messages for MCP Sentinel TUI."""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 from textual.message import Message
-
-
-class StatusUpdate(Message):
-    """Posted when the server lifespan emits a status change."""
-
-    def __init__(
-        self,
-        stage: str,
-        status_info: Dict[str, Any],
-        is_final: bool = False,
-    ) -> None:
-        self.stage = stage
-        self.status_info = status_info
-        self.is_final = is_final
-        super().__init__()
 
 
 class CapabilitiesReady(Message):
@@ -39,9 +24,16 @@ class CapabilitiesReady(Message):
         super().__init__()
 
 
-class ServerStopped(Message):
-    """Posted when the uvicorn server thread exits."""
+class ConnectionLost(Message):
+    """Posted when the TUI loses its HTTP connection to the server."""
 
-    def __init__(self, error: Optional[str] = None) -> None:
-        self.error = error
+    def __init__(self, reason: str = "Connection lost") -> None:
+        self.reason = reason
+        super().__init__()
+
+
+class ConnectionRestored(Message):
+    """Posted when the TUI re-establishes its HTTP connection."""
+
+    def __init__(self) -> None:
         super().__init__()

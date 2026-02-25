@@ -9,17 +9,21 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
+from mcp_sentinel.constants import AUTHOR, SERVER_NAME, SERVER_VERSION
+
 logger = logging.getLogger(__name__)
 
 
 class ServerInfoWidget(Widget):
     """Displays server metadata in a compact panel."""
 
-    server_name: reactive[str] = reactive("MCP Sentinel")
-    server_version: reactive[str] = reactive("")
-    author: reactive[str] = reactive("")
+    server_name: reactive[str] = reactive(SERVER_NAME)
+    server_version: reactive[str] = reactive(SERVER_VERSION)
+    author: reactive[str] = reactive(AUTHOR)
     sse_url: reactive[str] = reactive("N/A")
-    status_text: reactive[str] = reactive("Initializing…")
+    streamable_http_url: reactive[str] = reactive("N/A")
+    transport_type: reactive[str] = reactive("streamable-http")
+    status_text: reactive[str] = reactive("Initializing\u2026")
 
     # Kept internally for the command-palette detail view but not shown
     # in the sidebar panel.
@@ -35,9 +39,16 @@ class ServerInfoWidget(Widget):
         return f"{self.server_name} v{self.server_version}"
 
     def _render_body(self) -> str:
+        if self.transport_type == "streamable-http":
+            url_label = "Endpoint"
+            url_value = self.streamable_http_url
+        else:
+            url_label = "SSE"
+            url_value = self.sse_url
+
         lines = [
             f"[b]Author:[/b]  {self.author}",
-            f"[b]SSE:[/b]     {self.sse_url}",
+            f"[b]{url_label}:[/b]  {url_value}",
             "",
             f"[b]Status:[/b]  {self.status_text}",
         ]
@@ -63,6 +74,12 @@ class ServerInfoWidget(Widget):
     def watch_sse_url(self) -> None:
         self._refresh_display()
 
+    def watch_streamable_http_url(self) -> None:
+        self._refresh_display()
+
+    def watch_transport_type(self) -> None:
+        self._refresh_display()
+
     def watch_status_text(self) -> None:
         self._refresh_display()
 
@@ -77,6 +94,10 @@ class ServerInfoWidget(Widget):
 
         if info.get("sse_url"):
             self.sse_url = info["sse_url"]
+        if info.get("streamable_http_url"):
+            self.streamable_http_url = info["streamable_http_url"]
+        if info.get("transport_type"):
+            self.transport_type = info["transport_type"]
         if info.get("cfg_fpath"):
             self.config_file = os.path.basename(info["cfg_fpath"])
         if info.get("log_fpath"):

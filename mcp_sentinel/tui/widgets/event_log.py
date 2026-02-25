@@ -23,18 +23,6 @@ _STAGE_COLOURS: dict[str, str] = {
     "❌ Final Status": "red",
 }
 
-## Stage → colour mapping
-# _STAGE_COLOURS: dict[str, str] = {
-#     "🚀 Initialization": "bright_cyan",
-#     "📄 Config Load": "bright_blue",
-#     "🔌 Backend Connection": "bright_magenta",
-#     "🔍 Capability Discovery": "bright_yellow",
-#     "✅ Service Ready": "green",
-#     "❌ Startup Failed": "red",
-#     "🛑 Shutting Down": "dark_orange",
-#     "✅ Final Status": "green",
-#     "❌ Final Status": "red",
-# }
 
 class _CaptureRichLog(RichLog):
     """RichLog subclass that captures print() output.

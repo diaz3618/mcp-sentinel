@@ -1,10 +1,19 @@
-"""CLI argument parsing and main entry point."""
+"""CLI argument parsing and main entry point.
+
+Provides two modes of operation:
+
+* ``mcp-sentinel server`` — run the headless Uvicorn server.
+* ``mcp-sentinel tui``    — launch the Textual TUI against a running server.
+"""
+
+from __future__ import annotations
 
 import argparse
 import asyncio
 import logging
 import os
 import signal
+import subprocess
 import sys
 from typing import Optional
 
@@ -22,9 +31,42 @@ module_logger = logging.getLogger(__name__)
 
 uvicorn_svr_inst: Optional[uvicorn.Server] = None
 
+# Config file search order (first match wins)
+_CONFIG_SEARCH_ORDER = ("config.yaml", "config.yml")
 
-async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
-    """Async main function to start and manage the Uvicorn server."""
+# Legacy PID file location (kept for backward-compat cleanup)
+_PID_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "mcp-sentinel.pid",
+)
+
+
+def _find_config_file() -> str:
+    """Locate the config file by checking well-known directories in priority order.
+
+    Search order per directory: config.yaml → config.yml
+    Directories checked: CWD first, then the package's parent directory.
+    Falls back to ``CWD/config.yaml`` if nothing exists (loader will error).
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    pkg_parent_dir = os.path.dirname(script_dir)
+    search_dirs = [os.getcwd(), pkg_parent_dir]
+    for base_dir in search_dirs:
+        for name in _CONFIG_SEARCH_ORDER:
+            candidate = os.path.join(base_dir, name)
+            if os.path.isfile(candidate):
+                return candidate
+    # Default — loader will report a clear error
+    return os.path.join(os.getcwd(), "config.yaml")
+
+
+# ── ``mcp-sentinel server`` ─────────────────────────────────────────────
+
+
+async def _run_server(
+    host: str, port: int, log_lvl_cli: str, config_path: str | None = None
+) -> None:
+    """Async main for the headless server subcommand."""
     global uvicorn_svr_inst
 
     log_fpath, cfg_log_lvl = setup_logging(log_lvl_cli)
@@ -36,9 +78,12 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
         cfg_log_lvl,
     )
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_dir = os.path.dirname(script_dir)
-    cfg_abs_path = os.path.join(project_dir, "config.json")
+    # Resolve config path: CLI flag → env var → auto-detect
+    if config_path is None:
+        config_path = os.environ.get("SENTINEL_CONFIG")
+    if config_path is None:
+        config_path = _find_config_file()
+    cfg_abs_path = os.path.abspath(config_path)
     module_logger.info("Configuration file path resolved to: %s", cfg_abs_path)
 
     # Import app here to avoid circular imports at module level
@@ -50,6 +95,16 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
     app_s.actual_log_file = log_fpath
     app_s.file_log_level_configured = cfg_log_lvl
     app_s.config_file_path = cfg_abs_path
+
+    # Read transport type from config so display/management can use it.
+    try:
+        from mcp_sentinel.config.loader import load_sentinel_config
+
+        _sentinel_cfg = load_sentinel_config(cfg_abs_path)
+        app_s.transport_type = _sentinel_cfg.server.transport
+    except Exception:
+        app_s.transport_type = "streamable-http"
+
     module_logger.debug("Configuration parameters stored in app.state.")
 
     uvicorn_cfg = uvicorn.Config(
@@ -60,6 +115,27 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
         log_level=cfg_log_lvl.lower() if cfg_log_lvl == "DEBUG" else "warning",
     )
     uvicorn_svr_inst = uvicorn.Server(uvicorn_cfg)
+
+    # Pre-flight: verify port is available before doing expensive backend
+    # connections during lifespan startup.  This avoids the confusing
+    # scenario where all backends connect successfully but then uvicorn
+    # fails to bind the port and everything shuts down immediately.
+    import socket as _socket
+
+    _probe = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    try:
+        _probe.bind((host, port))
+    except OSError as e_bind:
+        module_logger.error(
+            "Port %s on %s is already in use: %s", port, host, e_bind
+        )
+        print(
+            f"\n❌ Error: Port {port} on {host} is already in use.\n"
+            f"   Release the port or choose a different one with --port.\n"
+        )
+        return
+    finally:
+        _probe.close()
 
     module_logger.info("Preparing to start Uvicorn server: http://%s:%s", host, port)
     try:
@@ -73,188 +149,649 @@ async def main_async(host: str, port: int, log_lvl_cli: str) -> None:
         module_logger.info("%s has shut down or is shutting down.", SERVER_NAME)
 
 
-def main() -> None:
-    """Program entry point: parse arguments and start the async main."""
-    parser = argparse.ArgumentParser(description=f"Start {SERVER_NAME} v{SERVER_VERSION}")
-    parser.add_argument(
+def _write_pid_file(session_name: str = "default", host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, config: str = "") -> None:
+    """Write session metadata via the sessions module (+ legacy PID file)."""
+    from mcp_sentinel.sessions import SessionInfo, save_session
+
+    info = SessionInfo(
+        name=session_name,
+        pid=os.getpid(),
+        host=host,
+        port=port,
+        config=config,
+    )
+    save_session(info)
+    # Legacy PID file for backward compatibility
+    with open(_PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+
+def _remove_pid_file(session_name: str = "default") -> None:
+    """Remove session metadata and legacy PID file."""
+    from mcp_sentinel.sessions import load_session, remove_session
+
+    info = load_session(session_name)
+    if info is not None and info.pid == os.getpid():
+        remove_session(session_name)
+    # Legacy cleanup
+    try:
+        with open(_PID_FILE) as f:
+            stored_pid = int(f.read().strip())
+        if stored_pid == os.getpid():
+            os.unlink(_PID_FILE)
+    except (FileNotFoundError, ValueError, OSError):
+        pass
+
+
+def _detach_server(args: argparse.Namespace) -> None:
+    """Re-launch the server command as a detached background process."""
+    from mcp_sentinel.sessions import (
+        SessionInfo,
+        auto_name,
+        check_port_conflict,
+        save_session,
+        validate_name,
+    )
+
+    # Resolve session name
+    explicit_name = getattr(args, "name", None)
+    if explicit_name:
+        session_name = validate_name(explicit_name)
+    else:
+        session_name = auto_name(args.port, DEFAULT_PORT)
+
+    # Check for port conflict with existing sessions
+    conflict = check_port_conflict(args.host, args.port)
+    if conflict is not None:
+        print(
+            f"❌ Error: Port {args.port} on {args.host} is already used by "
+            f"session '{conflict.name}' (PID {conflict.pid}).\n"
+            f"  Stop it first: mcp-sentinel stop {conflict.name}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    cmd = [sys.executable, "-m", "mcp_sentinel", "server", "--name", session_name]
+    if args.host != DEFAULT_HOST:
+        cmd += ["--host", args.host]
+    if args.port != DEFAULT_PORT:
+        cmd += ["--port", str(args.port)]
+    if args.log_level != "info":
+        cmd += ["--log-level", args.log_level]
+    cfg = getattr(args, "config", None)
+    if cfg is not None:
+        cmd += ["--config", cfg]
+
+    # Open the log directory for stdout/stderr redirection
+    from mcp_sentinel.constants import LOG_DIR
+
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), LOG_DIR)
+    os.makedirs(log_dir, exist_ok=True)
+    out_path = os.path.join(log_dir, f"detached-{session_name}.log")
+    out_fd = open(out_path, "a")
+
+    # Ensure the child process flushes stdout/stderr immediately so
+    # the detached.log is populated in real-time, not buffered.
+    child_env = os.environ.copy()
+    child_env["PYTHONUNBUFFERED"] = "1"
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=out_fd,
+        stderr=out_fd,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+        env=child_env,
+    )
+    out_fd.close()
+
+    # Save session metadata immediately (the child will also save on startup)
+    info = SessionInfo(
+        name=session_name,
+        pid=proc.pid,
+        host=args.host,
+        port=args.port,
+        config=getattr(args, "config", None) or "",
+        log_file=out_path,
+    )
+    save_session(info)
+
+    print(
+        f"MCP Sentinel server '{session_name}' started in background (PID {proc.pid}).\n"
+        f"  Logs: {out_path}\n"
+        f"  Stop: mcp-sentinel stop {session_name}"
+    )
+
+
+def _cmd_server(args: argparse.Namespace) -> None:
+    """Entry-point for ``mcp-sentinel server``."""
+    if getattr(args, "detach", False):
+        _detach_server(args)
+        return
+    _force_exit_count = 0
+
+    def _sigint_handler(sig: int, frame: object) -> None:
+        nonlocal _force_exit_count
+        _force_exit_count += 1
+        if _force_exit_count >= 2:
+            module_logger.info("Force exit requested (double Ctrl+C).")
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            os._exit(1)
+        module_logger.info("Ctrl+C received — shutting down…")
+        print("\n[Ctrl+C] Shutting down gracefully… (press again to force)")
+        if uvicorn_svr_inst is not None:
+            uvicorn_svr_inst.should_exit = True
+
+    def _sigterm_handler(sig: int, frame: object) -> None:
+        module_logger.info("SIGTERM received — shutting down gracefully…")
+        if uvicorn_svr_inst is not None:
+            uvicorn_svr_inst.should_exit = True
+
+    signal.signal(signal.SIGINT, _sigint_handler)
+    signal.signal(signal.SIGTERM, _sigterm_handler)
+    # Ignore SIGHUP so terminal hangup doesn't kill a detached server.
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+    # Resolve session name for PID/session tracking
+    from mcp_sentinel.sessions import auto_name
+
+    session_name = getattr(args, "name", None) or auto_name(args.port, DEFAULT_PORT)
+    config_path = getattr(args, "config", None) or ""
+
+    _write_pid_file(session_name, args.host, args.port, config_path)
+    try:
+        asyncio.run(
+            _run_server(
+                host=args.host,
+                port=args.port,
+                log_lvl_cli=args.log_level,
+                config_path=getattr(args, "config", None),
+            )
+        )
+    except KeyboardInterrupt:
+        module_logger.info("%s main program interrupted by KeyboardInterrupt.", SERVER_NAME)
+    except SystemExit as e_sys_exit:
+        if e_sys_exit.code is None or e_sys_exit.code == 0:
+            module_logger.info(
+                "%s main program exited normally (code: %s).",
+                SERVER_NAME,
+                e_sys_exit.code,
+            )
+        else:
+            module_logger.error(
+                "%s main program exited with SystemExit (code: %s).",
+                SERVER_NAME,
+                e_sys_exit.code,
+            )
+    except Exception as e_fatal:
+        module_logger.exception(
+            "%s main program encountered an uncaught fatal error: %s",
+            SERVER_NAME,
+            e_fatal,
+        )
+        sys.exit(1)
+    finally:
+        _remove_pid_file(session_name)
+        module_logger.info("%s application finished.", SERVER_NAME)
+
+
+# ── ``mcp-sentinel stop`` ────────────────────────────────────────────────
+
+
+def _cmd_stop(args: argparse.Namespace) -> None:
+    """Entry-point for ``mcp-sentinel stop [NAME]``."""
+    from mcp_sentinel.sessions import find_session, list_sessions, stop_session
+
+    session_name: Optional[str] = getattr(args, "session_name", None)
+
+    if session_name:
+        # Stop a specific named session
+        from mcp_sentinel.sessions import load_session
+
+        info = load_session(session_name)
+        if info is None:
+            print(f"No session named '{session_name}' found.", file=sys.stderr)
+            sys.exit(1)
+        if not info.is_alive():
+            print(f"Session '{session_name}' (PID {info.pid}) is not running (stale). Cleaning up.")
+            from mcp_sentinel.sessions import remove_session
+
+            remove_session(session_name)
+            return
+
+        print(f"Sending SIGTERM to '{session_name}' (PID {info.pid})…")
+        if stop_session(info):
+            print(f"Session '{session_name}' stopped.")
+        else:
+            print(f"Session '{session_name}' did not exit cleanly.", file=sys.stderr)
+            sys.exit(1)
+        # Also clean legacy PID file
+        try:
+            os.unlink(_PID_FILE)
+        except FileNotFoundError:
+            pass
+        return
+
+    # No name given — try to find the only running session
+    info = find_session()
+    if info is not None:
+        print(f"Sending SIGTERM to '{info.name}' (PID {info.pid})…")
+        if stop_session(info):
+            print(f"Session '{info.name}' stopped.")
+        else:
+            print(f"Session '{info.name}' did not exit cleanly.", file=sys.stderr)
+            sys.exit(1)
+        try:
+            os.unlink(_PID_FILE)
+        except FileNotFoundError:
+            pass
+        return
+
+    # Multiple sessions running
+    alive = list_sessions()
+    if len(alive) > 1:
+        print("Multiple sessions running. Specify which one to stop:", file=sys.stderr)
+        for s in alive:
+            print(f"  {s.name:20s}  PID {s.pid:>6d}  port {s.port}", file=sys.stderr)
+        print(f"\nUsage: mcp-sentinel stop <name>", file=sys.stderr)
+        sys.exit(1)
+
+    # Fall back to legacy PID file
+    try:
+        with open(_PID_FILE) as f:
+            pid = int(f.read().strip())
+    except FileNotFoundError:
+        print("No running server found.")
+        sys.exit(1)
+    except (ValueError, OSError) as exc:
+        print(f"Error reading PID file: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        print(f"Server process {pid} is not running (stale PID file). Cleaning up.")
+        try:
+            os.unlink(_PID_FILE)
+        except OSError:
+            pass
+        return
+    except PermissionError:
+        pass
+
+    print(f"Sending SIGTERM to server (PID {pid})…")
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError as exc:
+        print(f"Failed to stop server: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    import time
+
+    for _ in range(30):
+        time.sleep(0.1)
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+    else:
+        print(f"Server (PID {pid}) did not exit within 3 s — sending SIGKILL.")
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+
+    try:
+        os.unlink(_PID_FILE)
+    except FileNotFoundError:
+        pass
+    print("Server stopped.")
+
+
+# ── ``mcp-sentinel status`` ──────────────────────────────────────────────
+
+
+def _cmd_status(_args: argparse.Namespace) -> None:
+    """Entry-point for ``mcp-sentinel status``."""
+    from mcp_sentinel.sessions import list_sessions
+
+    sessions = list_sessions()
+
+    if not sessions:
+        print("No running MCP Sentinel sessions.")
+        return
+
+    # Header
+    print(f"{'NAME':<20s}  {'PID':>6s}  {'PORT':>5s}  {'HOST':<15s}  {'CONFIG':<30s}  {'STARTED'}")
+    print("─" * 100)
+
+    for s in sessions:
+        # Format started_at for display
+        started = s.started_at[:19].replace("T", " ") if s.started_at else "unknown"
+        config_display = os.path.basename(s.config) if s.config else "-"
+        print(
+            f"{s.name:<20s}  {s.pid:>6d}  {s.port:>5d}  {s.host:<15s}  "
+            f"{config_display:<30s}  {started}"
+        )
+
+    print(f"\n{len(sessions)} session(s) running.")
+
+
+# ── ``mcp-sentinel tui`` ────────────────────────────────────────────────
+
+
+def _cmd_tui(args: argparse.Namespace) -> None:
+    """Entry-point for ``mcp-sentinel tui``."""
+    token: Optional[str] = args.token or os.environ.get("SENTINEL_MGMT_TOKEN")
+    servers_config: Optional[str] = getattr(args, "servers_config", None)
+
+    _saved_termios = None
+    try:
+        import termios
+
+        _saved_termios = termios.tcgetattr(sys.stdin.fileno())
+    except Exception:
+        pass  # stdin may not be a real terminal
+
+    try:
+        from mcp_sentinel.tui.app import SentinelApp, _normalise_server_url
+        from mcp_sentinel.tui.server_manager import ServerManager
+
+        # Normalise the --server URL (strip /mcp, /sse suffixes)
+        raw_server: str = args.server
+        clean_server: str = _normalise_server_url(raw_server) or raw_server
+
+        # Build the ServerManager
+        if servers_config:
+            # Multi-server mode from explicit config file
+            mgr = ServerManager.from_config(config_path=servers_config)
+        else:
+            # Try loading from default servers.json; if empty, use --server flag
+            mgr = ServerManager.from_config()
+            if mgr.count == 0:
+                mgr.add("default", clean_server, token, set_active=True)
+
+        tui_app = SentinelApp(
+            server_url=clean_server if mgr.count <= 1 else None,
+            token=token,
+            server_manager=mgr,
+        )
+        tui_app.run()
+    except ImportError as e_imp:
+        print(
+            f"Error: Textual is required for TUI mode but could not be "
+            f"imported ({e_imp}). Install with:  pip install textual",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except KeyboardInterrupt:
+        module_logger.info("%s TUI interrupted by KeyboardInterrupt.", SERVER_NAME)
+    except Exception as e_fatal:
+        module_logger.exception(
+            "%s TUI encountered an uncaught fatal error: %s", SERVER_NAME, e_fatal
+        )
+        sys.exit(1)
+    finally:
+        _restore_terminal(_saved_termios)
+        module_logger.info("%s TUI finished.", SERVER_NAME)
+
+
+# ── Terminal restoration helper ──────────────────────────────────────────
+
+
+def _restore_terminal(saved_termios: object | None) -> None:
+    """Best-effort terminal restoration after Textual exits."""
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+    if saved_termios is not None:
+        try:
+            import termios
+
+            fd = sys.stdin.fileno()
+            termios.tcsetattr(fd, termios.TCSANOW, saved_termios)
+        except Exception:
+            pass
+
+    import subprocess as _sp
+
+    try:
+        _sp.run(
+            ["stty", "sane"],
+            stdin=sys.stdin,
+            stdout=_sp.DEVNULL,
+            stderr=_sp.DEVNULL,
+            timeout=2,
+        )
+    except Exception:
+        try:
+            os.system("stty sane 2>/dev/null")
+        except Exception:
+            pass
+
+    try:
+        import termios
+
+        fd = sys.stdin.fileno()
+        attrs = termios.tcgetattr(fd)
+        attrs[3] |= termios.ECHO | termios.ICANON
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    except Exception:
+        pass
+
+    try:
+        print()
+    except Exception:
+        pass
+
+
+# ── CLI parser construction ──────────────────────────────────────────────
+
+
+# ── ``mcp-sentinel secret`` ─────────────────────────────────────────────
+
+
+def _cmd_secret(args: argparse.Namespace) -> None:
+    """Entry-point for ``mcp-sentinel secret set/get/list/delete``."""
+    from mcp_sentinel.secrets.store import SecretStore
+
+    provider = getattr(args, "provider", "file")
+    store_kwargs: dict = {}
+    if provider == "file":
+        path = getattr(args, "path", None) or "secrets.enc"
+        store_kwargs["path"] = path
+
+    store = SecretStore(provider_type=provider, **store_kwargs)
+    action = args.secret_action
+
+    if action == "set":
+        import getpass as _gp
+
+        value = getattr(args, "value", None)
+        if value is None:
+            value = _gp.getpass(f"Value for '{args.name}': ")
+        store.set(args.name, value)
+        print(f"Secret '{args.name}' stored.")
+
+    elif action == "get":
+        val = store.get(args.name)
+        if val is None:
+            print(f"Secret '{args.name}' not found.", file=sys.stderr)
+            sys.exit(1)
+        print(val)
+
+    elif action == "list":
+        names = store.list_names()
+        if not names:
+            print("No secrets stored.")
+        else:
+            for n in sorted(names):
+                print(n)
+
+    elif action == "delete":
+        store.delete(args.name)
+        print(f"Secret '{args.name}' deleted.")
+
+
+# ── CLI parser construction ──────────────────────────────────────────────
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argparse parser with server/tui subcommands."""
+    parser = argparse.ArgumentParser(
+        description=f"{SERVER_NAME} v{SERVER_VERSION}",
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # ── server ──────────────────────────────────────────────────
+    sp_server = subparsers.add_parser(
+        "server",
+        help="Run the headless Sentinel server (Uvicorn + MCP bridge)",
+    )
+    sp_server.add_argument(
         "--host",
         type=str,
         default=DEFAULT_HOST,
         help=f"Host address (default: {DEFAULT_HOST})",
     )
-    parser.add_argument(
+    sp_server.add_argument(
         "--port",
         type=int,
         default=DEFAULT_PORT,
         help=f"Port (default: {DEFAULT_PORT})",
     )
-    parser.add_argument(
+    sp_server.add_argument(
         "--log-level",
         type=str,
         default="info",
         choices=["debug", "info", "warning", "error", "critical"],
         help="Set file logging level (default: info)",
     )
-    parser.add_argument(
-        "--no-tui",
+    sp_server.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to configuration file (YAML). "
+            "Default: auto-detect config.yaml/config.yml"
+        ),
+    )
+    sp_server.add_argument(
+        "-d",
+        "--detach",
         action="store_true",
         default=False,
-        help="Disable the TUI and use plain console output",
+        help="Run the server as a detached background process",
     )
+    sp_server.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help=(
+            "Session name for detached mode (default: 'default' or 'sentinel-PORT'). "
+            "Lowercase alphanumeric + hyphens, max 32 chars."
+        ),
+    )
+    sp_server.set_defaults(func=_cmd_server)
+
+    # ── stop ─────────────────────────────────────────────────────
+    sp_stop = subparsers.add_parser(
+        "stop",
+        help="Stop a detached Sentinel server",
+    )
+    sp_stop.add_argument(
+        "session_name",
+        nargs="?",
+        default=None,
+        metavar="NAME",
+        help="Session name to stop (optional if only one session is running)",
+    )
+    sp_stop.set_defaults(func=_cmd_stop)
+
+    # ── status ───────────────────────────────────────────────────
+    sp_status = subparsers.add_parser(
+        "status",
+        help="List all running Sentinel server sessions",
+    )
+    sp_status.set_defaults(func=_cmd_status)
+
+    # ── tui ─────────────────────────────────────────────────────
+    sp_tui = subparsers.add_parser(
+        "tui",
+        help="Launch the Textual TUI connected to a running Sentinel server",
+    )
+    default_url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+    sp_tui.add_argument(
+        "--server",
+        type=str,
+        default=default_url,
+        help=f"Server URL (default: {default_url})",
+    )
+    sp_tui.add_argument(
+        "--token",
+        type=str,
+        default=None,
+        help="Bearer token for management API (or set SENTINEL_MGMT_TOKEN env var)",
+    )
+    sp_tui.add_argument(
+        "--servers-config",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to servers.json for multi-server mode. "
+            "Default: ~/.config/mcp-sentinel/servers.json"
+        ),
+    )
+    sp_tui.set_defaults(func=_cmd_tui)
+
+    # ── secret ──────────────────────────────────────────────────
+    sp_secret = subparsers.add_parser(
+        "secret",
+        help="Manage encrypted secrets (set, get, list, delete)",
+    )
+    sp_secret.add_argument(
+        "--provider",
+        type=str,
+        default="file",
+        choices=["env", "file", "keyring"],
+        help="Secret provider backend (default: file)",
+    )
+    sp_secret.add_argument(
+        "--path",
+        type=str,
+        default=None,
+        help="Path to encrypted secrets file (file provider only)",
+    )
+    secret_sub = sp_secret.add_subparsers(dest="secret_action")
+
+    sp_set = secret_sub.add_parser("set", help="Store a secret")
+    sp_set.add_argument("name", help="Secret name")
+    sp_set.add_argument("value", nargs="?", default=None, help="Secret value (prompted if omitted)")
+
+    sp_get = secret_sub.add_parser("get", help="Retrieve a secret value")
+    sp_get.add_argument("name", help="Secret name")
+
+    secret_sub.add_parser("list", help="List all secret names")
+
+    sp_del = secret_sub.add_parser("delete", help="Delete a secret")
+    sp_del.add_argument("name", help="Secret name")
+
+    sp_secret.set_defaults(func=_cmd_secret)
+
+    return parser
+
+
+def main() -> None:
+    """Program entry point: parse arguments and dispatch to subcommand."""
+    parser = _build_parser()
     args = parser.parse_args()
 
-    if args.no_tui:
-        # Plain console mode — run Uvicorn directly on the main thread.
-        # Install a signal handler so the first Ctrl+C triggers a
-        # graceful shutdown and the second forces an exit.
-        _force_exit_count = 0
-
-        def _sigint_handler(sig: int, frame: object) -> None:
-            nonlocal _force_exit_count
-            _force_exit_count += 1
-            if _force_exit_count >= 2:
-                module_logger.info("Force exit requested (double Ctrl+C).")
-                # Restore default handler and re-raise for clean exit
-                signal.signal(signal.SIGINT, signal.SIG_DFL)
-                os._exit(1)
-            module_logger.info("Ctrl+C received — shutting down…")
-            print("\n[Ctrl+C] Shutting down gracefully… (press again to force)")
-            if uvicorn_svr_inst is not None:
-                uvicorn_svr_inst.should_exit = True
-
-        signal.signal(signal.SIGINT, _sigint_handler)
-
-        try:
-            asyncio.run(
-                main_async(
-                    host=args.host,
-                    port=args.port,
-                    log_lvl_cli=args.log_level,
-                )
-            )
-        except KeyboardInterrupt:
-            module_logger.info(
-                "%s main program interrupted by KeyboardInterrupt.",
-                SERVER_NAME,
-            )
-        except SystemExit as e_sys_exit:
-            if e_sys_exit.code is None or e_sys_exit.code == 0:
-                module_logger.info(
-                    "%s main program exited normally (code: %s).",
-                    SERVER_NAME,
-                    e_sys_exit.code,
-                )
-            else:
-                module_logger.error(
-                    "%s main program exited with SystemExit (code: %s).",
-                    SERVER_NAME,
-                    e_sys_exit.code,
-                )
-        except Exception as e_fatal:
-            module_logger.exception(
-                "%s main program encountered an uncaught fatal error: %s",
-                SERVER_NAME,
-                e_fatal,
-            )
-            sys.exit(1)
-        finally:
-            module_logger.info("%s application finished.", SERVER_NAME)
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
     else:
-        # TUI mode (default) — Textual owns the main thread.
-        # Save terminal state so we can guarantee restoration even
-        # if the TUI crashes or misbehaves during shutdown.
-        _saved_termios = None
-        try:
-            import termios
-
-            _saved_termios = termios.tcgetattr(sys.stdin.fileno())
-        except Exception:
-            pass  # stdin may not be a real terminal (CI, pipe, etc.)
-
-        try:
-            from mcp_sentinel.tui.app import SentinelApp
-
-            tui_app = SentinelApp(
-                host=args.host,
-                port=args.port,
-                log_level=args.log_level,
-            )
-            tui_app.run()
-        except ImportError as e_imp:
-            print(
-                f"Error: Textual is required for TUI mode but could not be "
-                f"imported ({e_imp}). Use --no-tui for plain console output.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        except KeyboardInterrupt:
-            module_logger.info(
-                "%s TUI interrupted by KeyboardInterrupt.", SERVER_NAME
-            )
-        except Exception as e_fatal:
-            module_logger.exception(
-                "%s TUI encountered an uncaught fatal error: %s",
-                SERVER_NAME,
-                e_fatal,
-            )
-            sys.exit(1)
-        finally:
-            # ── Aggressive terminal restoration ──────────────────
-            # Textual puts the terminal in raw/noecho mode.  If the
-            # driver's cleanup fails for any reason the terminal is
-            # left invisible to the user.  We apply multiple layers
-            # of restoration to guarantee a usable terminal.
-
-            # 1) Python-level streams back to originals FIRST so any
-            #    subsequent print() lands on the real terminal.
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
-
-            # 2) Restore saved termios attributes.
-            if _saved_termios is not None:
-                try:
-                    import termios
-
-                    fd = sys.stdin.fileno()
-                    termios.tcsetattr(fd, termios.TCSANOW, _saved_termios)
-                except Exception:
-                    pass
-
-            # 3) stty sane — nuclear option that re-enables echo,
-            #    canonical mode, and sane line discipline.  Use
-            #    subprocess.run for reliability over os.system.
-            import subprocess as _sp
-
-            try:
-                _sp.run(
-                    ["stty", "sane"],
-                    stdin=sys.stdin,
-                    stdout=_sp.DEVNULL,
-                    stderr=_sp.DEVNULL,
-                    timeout=2,
-                )
-            except Exception:
-                # Final fallback via os.system
-                try:
-                    os.system("stty sane 2>/dev/null")
-                except Exception:
-                    pass
-
-            # 4) Re-enable echo explicitly in case stty sane missed it
-            try:
-                import termios
-
-                fd = sys.stdin.fileno()
-                attrs = termios.tcgetattr(fd)
-                attrs[3] |= termios.ECHO | termios.ICANON
-                termios.tcsetattr(fd, termios.TCSANOW, attrs)
-            except Exception:
-                pass
-
-            # 5) Print a newline so the shell prompt appears cleanly
-            try:
-                print()
-            except Exception:
-                pass
-
-            module_logger.info("%s application finished.", SERVER_NAME)
+        args.func(args)

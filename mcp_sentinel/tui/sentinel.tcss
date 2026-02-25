@@ -25,6 +25,29 @@ Screen {
 
 /* ── Server-info panel ──────────────────────────────────────────── */
 
+/* ── Server selector ────────────────────────────────────────────── */
+
+#srv-selector {
+    height: auto;
+    max-height: 10;
+    border: round $accent;
+    padding: 0 1;
+}
+
+#srv-selector #srv-selector-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 0;
+}
+
+#srv-selector #srv-option-list {
+    height: auto;
+    max-height: 6;
+    scrollbar-size: 1 1;
+}
+
+/* ── Server-info panel ──────────────────────────────────────────── */
+
 ServerInfoWidget {
     height: auto;
     max-height: 10;
