@@ -107,6 +107,7 @@ class HealthChecker:
 
         self._health: Dict[str, BackendHealth] = {}
         self._task: Optional[asyncio.Task[None]] = None
+        self._background_tasks: set[asyncio.Task[None]] = set()
         self._stopped = asyncio.Event()
 
     # ── Public API ───────────────────────────────────────────────────────
@@ -297,10 +298,12 @@ class HealthChecker:
         if session is None:
             return
         # Schedule async re-discovery as a task to not block the checker
-        asyncio.create_task(
+        task = asyncio.create_task(
             self._registry.discover_single_backend(name, session),
             name=f"restore-caps-{name}",
         )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
         logger.info("[%s] Recovered — scheduling capability re-discovery", name)
 
     def _notify(self, name: str, old: HealthState, new: HealthState) -> None:

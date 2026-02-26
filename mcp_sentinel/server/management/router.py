@@ -503,10 +503,16 @@ async def handle_shutdown(request: Request) -> JSONResponse:
 
     resp = ShutdownResponse(shutting_down=True)
     # Schedule shutdown in background so we can return the response first
-    asyncio.create_task(
+    task = asyncio.create_task(
         _deferred_shutdown(service, timeout),
         name="management_shutdown",
     )
+    # Store strong reference on the event loop to prevent GC
+    loop = asyncio.get_running_loop()
+    if not hasattr(loop, "_sentinel_bg_tasks"):
+        loop._sentinel_bg_tasks = set()  # type: ignore[attr-defined]
+    loop._sentinel_bg_tasks.add(task)  # type: ignore[attr-defined]
+    task.add_done_callback(loop._sentinel_bg_tasks.discard)  # type: ignore[attr-defined]
     return JSONResponse(resp.model_dump())
 
 

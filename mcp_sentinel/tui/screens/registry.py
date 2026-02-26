@@ -54,7 +54,9 @@ class RegistryScreen(SentinelScreen):
         """Kick off async registry fetch."""
         self._cache = RegistryCache()
         self._clients: List[RegistryClient] = []
-        asyncio.create_task(self._load_registry())
+        self._load_task: asyncio.Task[None] | None = asyncio.create_task(
+            self._load_registry()
+        )
 
     async def _load_registry(self) -> None:
         """Fetch servers from all configured registries."""
