@@ -451,11 +451,15 @@ class SentinelApp(App):
                 pass  # Non-critical — status poll already covers basics
 
         except Exception as exc:
-            if self._connected:
-                self._connected = False
-                self._caps_loaded = False
-                mgr.mark_disconnected(name)
+            was_connected = self._connected
+            self._connected = False
+            self._caps_loaded = False
+            mgr.mark_disconnected(name)
+            if was_connected:
                 self.post_message(ConnectionLost(reason=str(exc)))
+            else:
+                # Still disconnected — log silently so we don't spam
+                logger.debug("Poll failed (still disconnected): %s", exc)
 
         # Refresh selector to reflect connection status changes
         self._refresh_server_selector()
@@ -625,14 +629,20 @@ class SentinelApp(App):
 
     def on_connection_lost(self, event: ConnectionLost) -> None:
         """Handle loss of HTTP connection to the remote server."""
-        srv_widget = self.query_one(ServerInfoWidget)
-        srv_widget.status_text = "Disconnected"
+        try:
+            srv_widget = self.query_one(ServerInfoWidget)
+            srv_widget.status_text = "Disconnected"
+        except Exception:
+            pass  # Widget not in active screen
 
-        event_log = self.query_one(EventLogWidget)
-        event_log.add_event(
-            "⚠️  Connection Lost",
-            event.reason,
-        )
+        try:
+            event_log = self.query_one(EventLogWidget)
+            event_log.add_event(
+                "⚠️  Connection Lost",
+                event.reason,
+            )
+        except Exception:
+            pass  # Widget not in active screen
         self.notify(
             f"Connection lost: {event.reason}",
             title="Disconnected",
@@ -642,14 +652,20 @@ class SentinelApp(App):
 
     def on_connection_restored(self, event: ConnectionRestored) -> None:
         """Handle reconnection to the remote server."""
-        srv_widget = self.query_one(ServerInfoWidget)
-        srv_widget.status_text = "Connected"
+        try:
+            srv_widget = self.query_one(ServerInfoWidget)
+            srv_widget.status_text = "Connected"
+        except Exception:
+            pass  # Widget not in active screen
 
-        event_log = self.query_one(EventLogWidget)
-        event_log.add_event(
-            "✅ Reconnected",
-            "Connection to server restored.",
-        )
+        try:
+            event_log = self.query_one(EventLogWidget)
+            event_log.add_event(
+                "✅ Reconnected",
+                "Connection to server restored.",
+            )
+        except Exception:
+            pass  # Widget not in active screen
 
     # ── Key-bound actions ───────────────────────────────────────
 

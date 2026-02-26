@@ -54,7 +54,7 @@ class ApiClient:
 
     def __init__(self, base_url: str, token: Optional[str] = None) -> None:
         self._base_url = base_url.rstrip("/")
-        self._api_url = f"{self._base_url}/manage/v1"
+        self._api_url = f"{self._base_url}/manage/v1/"
         self._token = token
         self._client: Optional[httpx.AsyncClient] = None
 
@@ -97,28 +97,28 @@ class ApiClient:
     async def get_health(self) -> HealthResponse:
         """``GET /manage/v1/health``"""
         client = self._ensure_client()
-        resp = await client.get("/health")
+        resp = await client.get("health")
         resp.raise_for_status()
         return HealthResponse.model_validate(resp.json())
 
     async def get_status(self) -> StatusResponse:
         """``GET /manage/v1/status``"""
         client = self._ensure_client()
-        resp = await client.get("/status")
+        resp = await client.get("status")
         resp.raise_for_status()
         return StatusResponse.model_validate(resp.json())
 
     async def get_backends(self) -> BackendsResponse:
         """``GET /manage/v1/backends``"""
         client = self._ensure_client()
-        resp = await client.get("/backends")
+        resp = await client.get("backends")
         resp.raise_for_status()
         return BackendsResponse.model_validate(resp.json())
 
     async def get_capabilities(self) -> CapabilitiesResponse:
         """``GET /manage/v1/capabilities``"""
         client = self._ensure_client()
-        resp = await client.get("/capabilities")
+        resp = await client.get("capabilities")
         resp.raise_for_status()
         return CapabilitiesResponse.model_validate(resp.json())
 
@@ -131,7 +131,7 @@ class ApiClient:
             Maximum number of recent events to retrieve.
         """
         client = self._ensure_client()
-        resp = await client.get("/events", params={"limit": limit})
+        resp = await client.get("events", params={"limit": limit})
         resp.raise_for_status()
         return EventsResponse.model_validate(resp.json())
 
@@ -140,7 +140,7 @@ class ApiClient:
     async def post_reload(self) -> ReloadResponse:
         """``POST /manage/v1/reload``"""
         client = self._ensure_client()
-        resp = await client.post("/reload", timeout=_MUTATING_TIMEOUT)
+        resp = await client.post("reload", timeout=_MUTATING_TIMEOUT)
         resp.raise_for_status()
         return ReloadResponse.model_validate(resp.json())
 
@@ -148,7 +148,7 @@ class ApiClient:
         """``POST /manage/v1/reconnect/{name}``"""
         client = self._ensure_client()
         resp = await client.post(
-            f"/reconnect/{backend_name}",
+            f"reconnect/{backend_name}",
             timeout=_MUTATING_TIMEOUT,
         )
         resp.raise_for_status()
@@ -158,7 +158,7 @@ class ApiClient:
         """``POST /manage/v1/shutdown``"""
         client = self._ensure_client()
         resp = await client.post(
-            "/shutdown",
+            "shutdown",
             json={"timeout_seconds": timeout_seconds},
             timeout=_MUTATING_TIMEOUT,
         )
