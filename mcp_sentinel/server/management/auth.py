@@ -11,11 +11,11 @@ If no token is configured, authentication is **disabled** and all requests pass.
 import hmac
 import logging
 import os
-from typing import Optional
+from typing import Any, Callable, Optional
 
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +42,19 @@ def resolve_token() -> Optional[str]:
     return None
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Starlette middleware that enforces Bearer token auth on management routes.
+class BearerAuthMiddleware:
+    """Pure ASGI middleware that enforces Bearer token auth on management routes.
+
+    Uses the ASGI interface directly (no ``BaseHTTPMiddleware``) to avoid
+    known performance and ``contextvars`` propagation issues.
 
     Usage::
 
         middleware = BearerAuthMiddleware(app, token="my-secret")
     """
 
-    def __init__(self, app, token: Optional[str] = None) -> None:  # type: ignore[override]
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, token: Optional[str] = None) -> None:
+        self.app = app
         self._token = token
         if token:
             logger.info("Management API authentication ENABLED.")
@@ -66,34 +69,54 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
     def auth_enabled(self) -> bool:
         return self._token is not None
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "/")
+
         # Always allow public paths
-        if request.url.path in PUBLIC_PATHS or request.url.path.rstrip("/") in PUBLIC_PATHS:
-            return await call_next(request)
+        if path in PUBLIC_PATHS or path.rstrip("/") in PUBLIC_PATHS:
+            await self.app(scope, receive, send)
+            return
 
         # If no token configured, allow all requests
         if not self.auth_enabled:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        # Extract Authorization header
-        auth_header = request.headers.get("authorization", "")
+        # Extract Authorization header from raw ASGI headers
+        auth_header = ""
+        for key, value in scope.get("headers", []):
+            if key == b"authorization":
+                auth_header = value.decode("latin-1")
+                break
+
         if not auth_header.startswith("Bearer "):
-            return _unauthorized(
+            response = _unauthorized(
                 "Missing or malformed Authorization header. Expected: Bearer <token>"
             )
+            await response(scope, receive, send)
+            return
 
         provided_token = auth_header[7:]  # Strip "Bearer " prefix
 
         # Constant-time comparison to prevent timing attacks
         if not hmac.compare_digest(provided_token, self._token):  # type: ignore[arg-type]
+            # Extract client host from scope for logging
+            client = scope.get("client")
+            client_host = client[0] if client else "unknown"
             logger.warning(
                 "Failed authentication attempt from %s for %s",
-                request.client.host if request.client else "unknown",
-                request.url.path,
+                client_host,
+                path,
             )
-            return _unauthorized("Invalid bearer token.")
+            response = _unauthorized("Invalid bearer token.")
+            await response(scope, receive, send)
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
 
 
 def _unauthorized(message: str) -> JSONResponse:
