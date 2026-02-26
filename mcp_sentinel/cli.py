@@ -393,7 +393,7 @@ def _cmd_stop(args: argparse.Namespace) -> None:
         print("Multiple sessions running. Specify which one to stop:", file=sys.stderr)
         for s in alive:
             print(f"  {s.name:20s}  PID {s.pid:>6d}  port {s.port}", file=sys.stderr)
-        print(f"\nUsage: mcp-sentinel stop <name>", file=sys.stderr)
+        print("\nUsage: mcp-sentinel stop <name>", file=sys.stderr)
         sys.exit(1)
 
     # Fall back to legacy PID file

@@ -62,14 +62,20 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# Create non-root user for runtime security
+RUN groupadd -r sentinel && useradd -r -g sentinel -d /app sentinel
+
 WORKDIR /app
 
 # Copy example config as fallback (user should mount their own config.yaml)
 COPY example_config.yaml ./example_config.yaml
 COPY example_config.yaml ./config.yaml
 
-# Create directories for logs and PID files
-RUN mkdir -p /app/logs /app/pids
+# Create directories for logs and PID files (owned by sentinel user)
+RUN mkdir -p /app/logs /app/pids && chown -R sentinel:sentinel /app
+
+# Switch to non-root user
+USER sentinel
 
 # Default port
 EXPOSE 9000
