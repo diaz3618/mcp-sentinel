@@ -32,4 +32,39 @@ import mcp_sentinel.tui.app  # noqa: E402
 
 importlib.reload(mcp_sentinel.tui.app)
 
-app = mcp_sentinel.tui.app.SentinelApp
+
+def _resolve_server_url() -> str:
+    """Resolve the Sentinel server URL from (highest priority first):
+
+    1. ``SENTINEL_TUI_SERVER`` environment variable
+    2. ``client.server_url`` in ``config.yaml`` (searched in CWD)
+    3. Hard-coded default ``http://127.0.0.1:9000``
+    """
+    env_url = os.environ.get("SENTINEL_TUI_SERVER")
+    if env_url:
+        return env_url
+
+    # Try loading the client section from config.yaml
+    for name in ("config.yaml", "config.yml"):
+        candidate = os.path.join(os.getcwd(), name)
+        if os.path.isfile(candidate):
+            try:
+                from mcp_sentinel.config.loader import load_sentinel_config
+
+                cfg = load_sentinel_config(candidate)
+                return cfg.client.server_url
+            except Exception:
+                pass  # Fall through to default
+            break
+
+    return "http://127.0.0.1:9000"
+
+
+class DevSentinelApp(mcp_sentinel.tui.app.SentinelApp):
+    """Thin subclass so that the Textual MCP ``textual_launch`` tool can
+    discover an ``App`` subclass in this module while passing our dev-time
+    ``--server`` URL automatically.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(server_url=_resolve_server_url())

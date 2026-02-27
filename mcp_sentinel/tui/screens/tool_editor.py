@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
+import yaml  # type: ignore[import-untyped]
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, DataTable, Input, Label
+from textual.widgets import Button, DataTable, Input, Label, Static
 
 from mcp_sentinel.tui.screens.base import SentinelScreen
 from mcp_sentinel.tui.widgets.param_editor import ParamEditorWidget
@@ -108,11 +110,29 @@ class ToolEditorScreen(SentinelScreen):
             # Right: Preview
             with Vertical(id="preview-panel"):
                 yield ToolPreviewWidget(id="tool-preview")
+                yield Static(
+                    "[dim]Pending changes will appear here[/]",
+                    id="diff-panel",
+                )
 
     def on_mount(self) -> None:
         table = self.query_one("#tool-table", DataTable)
         table.add_columns("Name", "Backend", "Status")
         table.cursor_type = "row"
+
+    def on_show(self) -> None:
+        """Populate the tool list from app-level cached capabilities."""
+        app = self.app
+        caps = getattr(app, "_last_caps", None)
+        if caps is not None:
+            tools = []
+            for t in caps.tools:
+                d = t.model_dump()
+                # Map route_map to add backend info
+                route = caps.route_map.get(d.get("name", ""), ("", ""))
+                d["backend"] = route[0] if route else ""
+                tools.append(d)
+            self.load_tools(tools)
 
     def load_tools(self, tools: List[Dict[str, Any]]) -> None:
         """Load tools into the editor."""
@@ -191,6 +211,7 @@ class ToolEditorScreen(SentinelScreen):
                         "inputSchema": tool_info.get("inputSchema", {}),
                     }
                 )
+            self._update_diff_panel()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "toggle-include":
@@ -212,15 +233,94 @@ class ToolEditorScreen(SentinelScreen):
         self._modifications[self._selected_tool]["included"] = not current
         # Refresh table to reflect the change
         self.load_tools(self._tools)
+        self._update_diff_panel()
 
     def action_save_changes(self) -> None:
-        """Save modifications to config (emits notification)."""
+        """Save tool customizations to the YAML config file.
+
+        Writes tool_overrides entries for renames, include/exclude, and
+        parameter defaults, then triggers a server config reload.
+        """
         if not self._modifications:
             self.notify("No changes to save")
             return
-        # In production, this would write to the config file
-        logger.info("Tool customizations saved: %s", json.dumps(self._modifications))
-        self.notify(f"Saved {len(self._modifications)} tool customization(s)")
+
+        config_path = self._resolve_config_path()
+        if config_path is None:
+            self.notify(
+                "Cannot locate config file — save manually",
+                severity="warning",
+            )
+            return
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+
+            overrides: Dict[str, Any] = data.setdefault("tool_overrides", {})
+
+            for tool_name, mods in self._modifications.items():
+                entry = overrides.setdefault(tool_name, {})
+                if "rename" in mods and mods["rename"] != tool_name:
+                    entry["display_name"] = mods["rename"]
+                if "included" in mods:
+                    entry["enabled"] = mods["included"]
+                if "defaults" in mods and mods["defaults"]:
+                    entry["defaults"] = mods["defaults"]
+
+            with open(config_path, "w", encoding="utf-8") as fh:
+                yaml.dump(data, fh, default_flow_style=False, sort_keys=False)
+
+            count = len(self._modifications)
+            self._modifications.clear()
+            logger.info("Saved %d tool override(s) to %s", count, config_path)
+            self.notify(
+                f"Saved {count} tool customization(s) to {os.path.basename(config_path)}",
+                title="Saved",
+            )
+
+            # Trigger hot-reload
+            self._trigger_reload()
+
+        except Exception as exc:
+            logger.error("Failed to save tool overrides: %s", exc)
+            self.notify(f"Save failed: {exc}", severity="error")
+
+    def _resolve_config_path(self) -> Optional[str]:
+        """Find the config file path from server status or defaults."""
+        app = self.app
+        status = getattr(app, "_last_status", None)
+        if status is not None:
+            path = getattr(status.config, "file_path", None)
+            if path and os.path.isfile(path):
+                return path
+        for name in ("config.yaml", "config.yml"):
+            candidate = os.path.join(os.getcwd(), name)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
+    def _trigger_reload(self) -> None:
+        """Request a config reload from the active server."""
+        mgr = getattr(self.app, "_server_manager", None)
+        if mgr is None:
+            return
+        client = getattr(mgr, "active_client", None)
+        if client is None:
+            return
+
+        async def _do_reload() -> None:
+            try:
+                result = await client.post_reload()
+                if result.reloaded:
+                    self.notify("Config reloaded — changes applied", title="Reload")
+                else:
+                    errors = "; ".join(result.errors) if result.errors else "unknown"
+                    self.notify(f"Reload warning: {errors}", severity="warning")
+            except Exception as exc:
+                logger.warning("Reload after save failed: %s", exc)
+
+        self.app.run_worker(_do_reload(), exclusive=True, name="editor-reload")
 
     def action_reset_tool(self) -> None:
         """Reset modifications for the selected tool."""
@@ -228,6 +328,28 @@ class ToolEditorScreen(SentinelScreen):
             del self._modifications[self._selected_tool]
             self._select_tool(self._selected_tool)
             self.notify(f"Reset '{self._selected_tool}'")
+
+    def _update_diff_panel(self) -> None:
+        """Render a summary of all pending modifications."""
+        try:
+            diff = self.query_one("#diff-panel", Static)
+        except Exception:
+            return
+        if not self._modifications:
+            diff.update("[dim]No pending changes[/]")
+            return
+        lines = ["[b]Pending Changes:[/b]"]
+        for tool_name, mods in self._modifications.items():
+            parts: list[str] = []
+            if "rename" in mods and mods["rename"] != tool_name:
+                parts.append(f"rename → {mods['rename']}")
+            if "included" in mods:
+                parts.append("exclude" if not mods["included"] else "include")
+            if "defaults" in mods and mods["defaults"]:
+                parts.append(f"{len(mods['defaults'])} defaults")
+            if parts:
+                lines.append(f"  [cyan]{tool_name}[/cyan]: {', '.join(parts)}")
+        diff.update("\n".join(lines))
 
     def action_go_back(self) -> None:
         """Return to settings."""

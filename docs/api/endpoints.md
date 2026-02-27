@@ -290,7 +290,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 Events are sent as SSE `data:` frames (JSON). A heartbeat comment is sent every
 30 seconds to keep the connection alive.
 
-```markdown
+```
 data: {"id": "evt_abc", "timestamp": "...", "stage": "connected", ...}
 
 data: {"id": "evt_def", "timestamp": "...", "stage": "error", ...}

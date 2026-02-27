@@ -6,7 +6,7 @@ operational visibility — all through a single connection point.
 
 ## System Diagram
 
-```markdown
+```
                      ┌──────────────────────────────────────────┐
                      │              MCP Sentinel                │
                      │                                          │
@@ -48,7 +48,7 @@ operational visibility — all through a single connection point.
 
 ## Package Structure
 
-```markdown
+```
 mcp_sentinel/
 ├── __init__.py
 ├── __main__.py          # python -m mcp_sentinel
@@ -138,7 +138,7 @@ mcp_sentinel/
 
 ### 1. Startup
 
-```markdown
+```
 CLI (main)
   → Uvicorn
     → Starlette app_lifespan
@@ -156,7 +156,7 @@ CLI (main)
 
 ### 2. MCP Request
 
-```markdown
+```
 Client request (list_tools / call_tool / read_resource / get_prompt)
   → Transport layer (SSE or Streamable HTTP)
     → MCP protocol handler
@@ -174,7 +174,7 @@ Client request (list_tools / call_tool / read_resource / get_prompt)
 
 ### 3. Management API Request
 
-```markdown
+```
 HTTP request → /manage/v1/{endpoint}
   → BearerAuthMiddleware (token check, /health exempt)
     → Route handler
@@ -184,7 +184,7 @@ HTTP request → /manage/v1/{endpoint}
 
 ### 4. TUI Polling
 
-```markdown
+```
 SentinelApp (Textual)
   → ApiClient polls /manage/v1/ endpoints every 2s
     → Health, Backends, Capabilities, Events

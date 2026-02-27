@@ -51,6 +51,18 @@ def register_handlers(mcp_server: McpServer) -> None:
             raise BackendServerError("Registry is not initialized")
         tools = mcp_server.registry.get_aggregated_tools()
 
+        # Append composite workflow tools (if any are loaded)
+        composite_tools = getattr(mcp_server, "composite_tools", None) or []
+        for ct in composite_tools:
+            info = ct.to_tool_info()
+            tools.append(
+                mcp_types.Tool(
+                    name=info["name"],
+                    description=info.get("description", ""),
+                    inputSchema=info.get("inputSchema", {}),
+                )
+            )
+
         # If optimizer is active, return meta-tools + keep-list only
         optimizer = getattr(mcp_server, "optimizer_index", None)
         optimizer_enabled = getattr(mcp_server, "optimizer_enabled", False)
@@ -66,7 +78,11 @@ def register_handlers(mcp_server: McpServer) -> None:
             )
             return result
 
-        logger.info("Returning %s aggregated tools", len(tools))
+        logger.info(
+            "Returning %s aggregated tools (%d composite)",
+            len(tools),
+            len(composite_tools),
+        )
         return tools
 
     @mcp_server.list_resources()
@@ -120,6 +136,29 @@ def register_handlers(mcp_server: McpServer) -> None:
                 raise BackendServerError(
                     f"Backend returned invalid type for tool call '{real_name}'."
                 )
+
+        # Handle composite workflow tools
+        composite_tools = getattr(mcp_server, "composite_tools", None) or []
+        for ct in composite_tools:
+            if ct.name == name:
+                logger.info("Dispatching composite workflow tool '%s'", name)
+                try:
+                    output = await ct.invoke(arguments)
+                    return [
+                        mcp_types.TextContent(
+                            type="text",
+                            text=json.dumps(output, indent=2)
+                            if not isinstance(output, str)
+                            else output,
+                        )
+                    ]
+                except Exception as exc:
+                    logger.error(
+                        "Composite workflow '%s' failed: %s", name, exc, exc_info=True
+                    )
+                    raise BackendServerError(
+                        f"Composite workflow '{name}' execution failed: {exc}"
+                    ) from exc
 
         result = await _dispatch(mcp_server, name, "call_tool", arguments)
         if isinstance(result, mcp_types.CallToolResult):

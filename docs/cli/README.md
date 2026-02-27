@@ -10,7 +10,7 @@ MCP Sentinel provides three subcommands:
 
 ## Usage
 
-```markdown
+```
 mcp-sentinel [-h] {server,tui,secret} ...
 ```
 

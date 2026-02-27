@@ -25,7 +25,7 @@ See [`mcp-sentinel tui`](../cli/tui.md) for all CLI options.
 
 ## Screens
 
-The TUI has four main screens, accessible via keybindings or the command palette.
+The TUI has ten modes, accessible via keybindings or the command palette.
 
 ### Dashboard (key: `1` or `d`)
 
@@ -62,6 +62,54 @@ Configuration and preferences:
 - Theme selection
 - TUI preferences
 
+### Skills (key: `5`)
+
+Skill pack management:
+
+- Browse installed skills with enable/disable status
+- Enable, disable, and apply skills
+- View skill manifests and workflow details
+
+### Editor (key: `6`)
+
+Tool parameter editing and testing:
+
+- Edit tool parameters with type-aware input fields
+- JSON schema visualization
+- Test invocation (dry-run)
+
+### Audit (key: `7`)
+
+Audit log viewer:
+
+- Browse structured audit events
+- Filter by method, backend, and status
+- View event details with timing information
+
+### Health (key: `8` or `h`)
+
+Backend health monitoring:
+
+- Per-backend health status and history
+- Health check configuration
+- Version drift detection
+
+### Security (key: `9`)
+
+Security overview:
+
+- Authentication status and configuration
+- Active sessions and middleware chain
+- Secrets and network isolation status
+
+### Operations (key: `0` or `o`)
+
+Operational controls:
+
+- Backend management (reconnect, restart)
+- Server groups and sync status
+- Workflow management
+
 ## Keybindings
 
 | Key | Action |
@@ -71,6 +119,12 @@ Configuration and preferences:
 | `2` | Switch to Tools |
 | `3` | Switch to Registry |
 | `4` or `s` | Switch to Settings |
+| `5` | Switch to Skills |
+| `6` | Switch to Editor |
+| `7` | Switch to Audit |
+| `8` or `h` | Switch to Health |
+| `9` | Switch to Security |
+| `0` or `o` | Switch to Operations |
 | `t` | Show Tools tab |
 | `r` | Show Resources tab |
 | `p` | Show Prompts tab |
@@ -86,6 +140,12 @@ Press `Ctrl+P` to open the command palette with quick access to:
 - Tools Mode
 - Registry Mode
 - Settings Mode
+- Skills Mode
+- Editor Mode
+- Audit Mode
+- Health Mode
+- Security Mode
+- Operations Mode
 - Show Server Details
 - Show Connection Info
 - Show Tools/Resources/Prompts Tab
@@ -114,10 +174,11 @@ you to switch between multiple Sentinel instances:
 
 ```json
 {
-  "servers": {
-    "local": { "url": "http://127.0.0.1:9000" },
-    "staging": { "url": "http://staging:9000", "token": "tok" }
-  }
+  "servers": [
+    { "name": "local", "url": "http://127.0.0.1:9000" },
+    { "name": "staging", "url": "http://staging:9000", "token": "tok" }
+  ],
+  "active": "local"
 }
 ```
 
@@ -133,8 +194,6 @@ open the theme picker with `T` (Shift+T) for a visual preview.
 
 | Screen | Purpose |
 |--------|---------|
-| Tool Editor | Edit tool parameters and test invocation |
-| Skills | Browse and manage installed skill packs |
 | Elicitation | Handle elicitation requests from backends |
 | Theme Picker | Visual theme selection with previews |
 

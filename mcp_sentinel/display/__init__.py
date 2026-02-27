@@ -5,9 +5,11 @@ from mcp_sentinel.display.console import (
     gen_status_info,
     log_file_status,
 )
+from mcp_sentinel.display.installer import InstallerDisplay
 from mcp_sentinel.display.logging_config import setup_logging
 
 __all__ = [
+    "InstallerDisplay",
     "disp_console_status",
     "gen_status_info",
     "log_file_status",

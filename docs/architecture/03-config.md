@@ -5,9 +5,9 @@ expansion, secret resolution, schema validation, and live hot-reload.
 
 ## Loading Process
 
-```markdown
-Config file (YAML/JSON)
-  → Parse (pyyaml or json)
+```
+Config file (YAML)
+  → Parse (pyyaml)
     → Expand ${ENV_VAR} references
       → Detect format (legacy or v1)
         → Auto-migrate legacy → v1 if needed

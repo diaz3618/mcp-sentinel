@@ -40,6 +40,7 @@ class CapabilitySection(Widget):
     tools_count: reactive[int] = reactive(0)
     resources_count: reactive[int] = reactive(0)
     prompts_count: reactive[int] = reactive(0)
+    _conflicts_count: int = 0
 
     def compose(self) -> ComposeResult:
         with TabbedContent(id="cap-tabs"):
@@ -53,7 +54,7 @@ class CapabilitySection(Widget):
     def on_mount(self) -> None:
         # Set up columns for each table
         dt_tools = self.query_one("#dt-tools", DataTable)
-        dt_tools.add_columns("Name", "Server", "Description")
+        dt_tools.add_columns("Name", "Original", "Server", "Description")
         dt_tools.cursor_type = "row"
         dt_tools.zebra_stripes = True
 
@@ -78,7 +79,8 @@ class CapabilitySection(Widget):
         """
         try:
             tabs = self.query_one("#cap-tabs", TabbedContent)
-            tabs.get_tab("tab-tools").label = f"Tools ({self.tools_count})"
+            conflicts_note = f" ⚡{self._conflicts_count}" if self._conflicts_count else ""
+            tabs.get_tab("tab-tools").label = f"Tools ({self.tools_count}){conflicts_note}"
             tabs.get_tab("tab-resources").label = f"Resources ({self.resources_count})"
             tabs.get_tab("tab-prompts").label = f"Prompts ({self.prompts_count})"
         except Exception:
@@ -112,17 +114,33 @@ class CapabilitySection(Widget):
         # Tools
         dt_tools = self.query_one("#dt-tools", DataTable)
         dt_tools.clear()
+        conflicts = 0
         for t in tools:
             name = _attr_or_key(t, "name", "—")
-            server = rmap.get(name, ("—", ""))[0]
+            original = _attr_or_key(t, "original_name", "")
+            renamed = _attr_or_key(t, "renamed", False)
+            filtered = _attr_or_key(t, "filtered", False)
+            server = _attr_or_key(t, "backend", "") or rmap.get(name, ("—", ""))[0]
             desc = _attr_or_key(t, "description")
+
+            # If renamed, show original with indicator
+            if renamed and original and original != name:
+                original_display = f"[yellow]⚡ {original}[/yellow]"
+                conflicts += 1
+            elif filtered:
+                original_display = "[dim]filtered[/dim]"
+            else:
+                original_display = "—"
+
             dt_tools.add_row(
                 name,
+                original_display,
                 server,
                 _trunc(desc),
                 key=name,
             )
         self.tools_count = len(tools)
+        self._conflicts_count = conflicts
 
         # Resources
         dt_res = self.query_one("#dt-resources", DataTable)

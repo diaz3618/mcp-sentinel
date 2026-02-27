@@ -34,14 +34,14 @@ class ParamEditorWidget(Static):
 
     def __init__(
         self,
-        tool_name: str,
-        input_schema: Dict[str, Any],
+        tool_name: str = "",
+        input_schema: Dict[str, Any] | None = None,
         current_defaults: Dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self._tool_name = tool_name
-        self._schema = input_schema
+        self._schema = input_schema or {}
         self._defaults = current_defaults or {}
 
     def compose(self) -> ComposeResult:
@@ -73,6 +73,50 @@ class ParamEditorWidget(Static):
                         placeholder=f"Default {ptype}",
                         id=f"param-{name}",
                     )
+
+    def load_schema(
+        self,
+        input_schema: Dict[str, Any],
+        current_defaults: Dict[str, Any] | None = None,
+    ) -> None:
+        """Reload the editor with a new tool schema and defaults.
+
+        Replaces all child widgets with fresh inputs matching the schema.
+        """
+        self._schema = input_schema
+        self._defaults = current_defaults or {}
+        # Re-render children
+        self.remove_children()
+        properties = input_schema.get("properties", {})
+        if not properties:
+            self.mount(Label("[dim]No parameters to edit[/]"))
+            return
+        container = Vertical()
+        self.mount(container)
+        container.mount(Label(f"[b]Defaults for {self._tool_name}[/b]"))
+        for name, prop in properties.items():
+            ptype = prop.get("type", "string")
+            desc = prop.get("description", "")
+            current = self._defaults.get(name)
+            label_text = f"  {name}"
+            if desc:
+                label_text += f" [dim]({desc})[/]"
+            container.mount(Label(label_text))
+            if ptype == "boolean":
+                container.mount(
+                    Switch(
+                        value=bool(current) if current is not None else False,
+                        id=f"param-{name}",
+                    )
+                )
+            else:
+                container.mount(
+                    Input(
+                        value=str(current) if current is not None else "",
+                        placeholder=f"Default {ptype}",
+                        id=f"param-{name}",
+                    )
+                )
 
     def on_input_changed(self, event: Input.Changed) -> None:
         self._emit_defaults()

@@ -24,10 +24,19 @@ from mcp_sentinel.tui.events import (
     ConnectionLost,
     ConnectionRestored,
 )
+from mcp_sentinel.tui.screens.audit_log import AuditLogScreen
+from mcp_sentinel.tui.screens.backend_detail import BackendDetailModal
+from mcp_sentinel.tui.screens.client_config import ClientConfigModal
 from mcp_sentinel.tui.screens.dashboard import DashboardScreen
+from mcp_sentinel.tui.screens.exit_modal import ExitModal
+from mcp_sentinel.tui.screens.health import HealthScreen
+from mcp_sentinel.tui.screens.operations import OperationsScreen
 from mcp_sentinel.tui.screens.registry import RegistryScreen
+from mcp_sentinel.tui.screens.security import SecurityScreen
 from mcp_sentinel.tui.screens.settings import SettingsScreen
+from mcp_sentinel.tui.screens.skills import SkillsScreen
 from mcp_sentinel.tui.screens.theme_picker import ThemeScreen
+from mcp_sentinel.tui.screens.tool_editor import ToolEditorScreen
 from mcp_sentinel.tui.screens.tools import ToolsScreen
 from mcp_sentinel.tui.widgets.backend_status import BackendStatusWidget
 from mcp_sentinel.tui.widgets.capability_tables import CapabilitySection
@@ -73,12 +82,22 @@ class SentinelApp(App):
         # ── App ────────────────────────────────────────────────
         Binding("q", "quit", "Quit", priority=True),
         # ── Mode switching ─────────────────────────────────────
-        Binding("1", "switch_mode('dashboard')", "Dashboard", key_display="1"),
-        Binding("d", "switch_mode('dashboard')", "Dashboard", show=False),
+        Binding("1", "switch_mode('dashboard')", "Dash", key_display="1"),
+        Binding("d", "switch_mode('dashboard')", "Dash", show=False),
         Binding("2", "switch_mode('tools')", "Tools", key_display="2"),
-        Binding("3", "switch_mode('registry')", "Registry", key_display="3"),
-        Binding("4", "switch_mode('settings')", "Settings", key_display="4"),
-        Binding("s", "switch_mode('settings')", "Settings", show=False),
+        Binding("3", "switch_mode('registry')", "Reg", key_display="3"),
+        Binding("4", "switch_mode('settings')", "Set", key_display="4"),
+        Binding("s", "switch_mode('settings')", "Set", show=False),
+        Binding("5", "switch_mode('skills')", "Skills", key_display="5"),
+        Binding("6", "switch_mode('editor')", "Edit", key_display="6"),
+        Binding("7", "switch_mode('audit')", "Audit", key_display="7"),
+        Binding("8", "switch_mode('health')", "Health", key_display="8"),
+        Binding("h", "switch_mode('health')", "Health", show=False),
+        Binding("9", "switch_mode('security')", "Sec", key_display="9"),
+        Binding("0", "switch_mode('operations')", "Ops", key_display="0"),
+        Binding("o", "switch_mode('operations')", "Ops", show=False),
+        # ── Actions ────────────────────────────────────────────
+        Binding("x", "export_client_config", "Export Config", show=False),
         # ── Navigation (within active screen) ──────────────────
         Binding("t", "show_tools", "Tools Tab", show=False),
         Binding("r", "show_resources", "Resources Tab", show=False),
@@ -93,7 +112,15 @@ class SentinelApp(App):
         "tools": ToolsScreen,
         "registry": RegistryScreen,
         "settings": SettingsScreen,
+        "skills": SkillsScreen,
+        "editor": ToolEditorScreen,
+        "audit": AuditLogScreen,
+        "health": HealthScreen,
+        "security": SecurityScreen,
+        "operations": OperationsScreen,
     }
+
+    DEFAULT_MODE = "dashboard"
 
     # ── Construction ────────────────────────────────────────────
 
@@ -158,6 +185,41 @@ class SentinelApp(App):
             help="Theme, config viewer, and preferences (4/s)",
             callback=lambda: self.switch_mode("settings"),
         )
+        yield SystemCommand(
+            title="Skills Mode",
+            help="Manage installed skill presets (5)",
+            callback=lambda: self.switch_mode("skills"),
+        )
+        yield SystemCommand(
+            title="Tool Editor Mode",
+            help="Rename, filter, and customize tools (6)",
+            callback=lambda: self.switch_mode("editor"),
+        )
+        yield SystemCommand(
+            title="Audit Log Mode",
+            help="Structured event log with filters and export (7)",
+            callback=lambda: self.switch_mode("audit"),
+        )
+        yield SystemCommand(
+            title="Health Mode",
+            help="Backend health, sessions, and version drift (8/h)",
+            callback=lambda: self.switch_mode("health"),
+        )
+        yield SystemCommand(
+            title="Security Mode",
+            help="Auth, authorization, secrets, and network (9)",
+            callback=lambda: self.switch_mode("security"),
+        )
+        yield SystemCommand(
+            title="Operations Mode",
+            help="Workflows, optimizer, and telemetry (0/o)",
+            callback=lambda: self.switch_mode("operations"),
+        )
+        yield SystemCommand(
+            title="Export Client Config",
+            help="Generate config for VS Code, Cursor, Claude, etc.",
+            callback=self.action_export_client_config,
+        )
 
         # ── Server ─────────────────────────────────────────────
         yield SystemCommand(
@@ -203,7 +265,7 @@ class SentinelApp(App):
     def _show_server_details(self) -> None:
         """Show server config details via notification."""
         try:
-            srv = self.query_one(ServerInfoWidget)
+            srv = self.screen.query_one(ServerInfoWidget)
             lines = [
                 f"[b]Config file:[/b]  {srv.config_file}",
                 f"[b]Log file:[/b]    {srv.log_file}",
@@ -220,8 +282,8 @@ class SentinelApp(App):
     def _show_connection_info(self) -> None:
         """Show connection info via notification."""
         try:
-            srv = self.query_one(ServerInfoWidget)
-            bk = self.query_one(BackendStatusWidget)
+            srv = self.screen.query_one(ServerInfoWidget)
+            bk = self.screen.query_one(BackendStatusWidget)
             lines = [
                 f"[b]SSE URL:[/b]    {srv.sse_url}",
                 f"[b]Backends:[/b]   {bk.connected}/{bk.total} connected",
@@ -246,11 +308,9 @@ class SentinelApp(App):
         # Ensure we have a ServerManager
         self._ensure_server_manager()
 
-        # Switch to dashboard mode.  DashboardScreen.on_show() calls
-        # _init_after_mode_switch() once widgets are ready; a deferred
-        # timer provides a secondary fallback.
-        self.switch_mode("dashboard")
-        self.set_timer(0.3, self._init_after_mode_switch)
+        # DEFAULT_MODE already switches to dashboard; initialize
+        # widgets after the mode screen is composed.
+        self.set_timer(0.1, self._init_after_mode_switch)
 
     def _init_after_mode_switch(self) -> None:
         """Initialize dashboard widgets after mode switch completes.
@@ -261,18 +321,19 @@ class SentinelApp(App):
         if getattr(self, "_dashboard_init_done", False):
             return
         try:
-            info = self.query_one(ServerInfoWidget)
+            scr = self.screen
+            info = scr.query_one(ServerInfoWidget)
             info.server_name = SERVER_NAME
             info.server_version = SERVER_VERSION
             info.author = AUTHOR
 
-            event_log = self.query_one(EventLogWidget)
+            event_log = scr.query_one(EventLogWidget)
             event_log.start_capture()
 
             self._start_remote_mode(info, event_log)
             self._dashboard_init_done = True
-        except Exception:
-            logger.warning("Dashboard initialization deferred", exc_info=True)
+        except Exception as exc:
+            logger.warning("Dashboard initialization deferred: %s", exc)
 
     def _ensure_server_manager(self) -> None:
         """Lazily create a :class:`ServerManager` if one wasn't injected."""
@@ -336,7 +397,7 @@ class SentinelApp(App):
 
         # Stop capturing print()
         try:
-            self.query_one(EventLogWidget).stop_capture()
+            self.screen.query_one(EventLogWidget).stop_capture()
         except Exception:
             pass
 
@@ -455,10 +516,9 @@ class SentinelApp(App):
             self._connected = False
             self._caps_loaded = False
             mgr.mark_disconnected(name)
-            if was_connected:
-                self.post_message(ConnectionLost(reason=str(exc)))
-            else:
-                # Still disconnected — log silently so we don't spam
+            # Always notify on failure — not just when previously connected.
+            self.post_message(ConnectionLost(reason=str(exc)))
+            if not was_connected:
                 logger.debug("Poll failed (still disconnected): %s", exc)
 
         # Refresh selector to reflect connection status changes
@@ -470,7 +530,7 @@ class SentinelApp(App):
         """Convert a StatusResponse into widget updates."""
         self._last_status = status
         try:
-            srv_widget = self.query_one(ServerInfoWidget)
+            srv_widget = self.screen.query_one(ServerInfoWidget)
             srv_widget.server_version = status.service.version or SERVER_VERSION
             srv_widget.sse_url = status.transport.sse_url or self._server_url or ""
             srv_widget.streamable_http_url = status.transport.streamable_http_url or ""
@@ -482,7 +542,7 @@ class SentinelApp(App):
             pass  # Widget not in active screen
 
         try:
-            backend = self.query_one(BackendStatusWidget)
+            backend = self.screen.query_one(BackendStatusWidget)
             backend.total = status.config.backend_count
             if status.service.state == "running":
                 backend.connected = status.config.backend_count
@@ -494,7 +554,7 @@ class SentinelApp(App):
     def _apply_backends_response(self, backends_resp: Any) -> None:
         """Feed phase-aware backend data into BackendStatusWidget."""
         try:
-            backend_widget = self.query_one(BackendStatusWidget)
+            backend_widget = self.screen.query_one(BackendStatusWidget)
             details = [b.model_dump() for b in backends_resp.backends]
             backend_widget.update_from_backends(details)
         except Exception:
@@ -511,13 +571,13 @@ class SentinelApp(App):
         route_map = caps.route_map
 
         try:
-            cap_section = self.query_one(CapabilitySection)
+            cap_section = self.screen.query_one(CapabilitySection)
             cap_section.populate(tools, resources, prompts, route_map)
         except Exception:
             pass  # Widget not in active screen
 
         try:
-            event_log = self.query_one(EventLogWidget)
+            event_log = self.screen.query_one(EventLogWidget)
             event_log.add_event(
                 "✅ Service Ready",
                 f"{len(tools)} tools, {len(resources)} resources, {len(prompts)} prompts loaded",
@@ -527,6 +587,7 @@ class SentinelApp(App):
 
     def _apply_events_response(self, events_resp: Any) -> None:
         """Show new events in the EventLogWidget."""
+        self._last_events = events_resp  # Cache for audit log screen
         for ev in events_resp.events:
             if ev.id in self._seen_event_ids:
                 continue
@@ -536,7 +597,7 @@ class SentinelApp(App):
                 for k, v in ev.details.items():
                     extra.append(f"{k}: {v}")
             try:
-                event_log = self.query_one(EventLogWidget)
+                event_log = self.screen.query_one(EventLogWidget)
                 event_log.add_event(
                     ev.stage,
                     ev.message,
@@ -557,7 +618,7 @@ class SentinelApp(App):
             return
 
         try:
-            selector = self.query_one("#srv-selector", ServerSelectorWidget)
+            selector = self.screen.query_one("#srv-selector", ServerSelectorWidget)
         except Exception:
             return  # widget not mounted yet
 
@@ -594,14 +655,14 @@ class SentinelApp(App):
         entry = mgr.active_entry
         if entry:
             try:
-                srv_widget = self.query_one(ServerInfoWidget)
+                srv_widget = self.screen.query_one(ServerInfoWidget)
                 srv_widget.sse_url = entry.url
                 srv_widget.status_text = "Connecting\u2026" if not entry.connected else "Connected"
             except Exception:
                 pass
 
             try:
-                event_log = self.query_one(EventLogWidget)
+                event_log = self.screen.query_one(EventLogWidget)
                 event_log.add_event(
                     "Server Switch",
                     f"Switched to '{name}' ({entry.url})",
@@ -619,7 +680,7 @@ class SentinelApp(App):
 
     def on_capabilities_ready(self, event: CapabilitiesReady) -> None:
         """Explicit capability population (alternative path)."""
-        cap = self.query_one(CapabilitySection)
+        cap = self.screen.query_one(CapabilitySection)
         cap.populate(
             event.tools,
             event.resources,
@@ -630,13 +691,13 @@ class SentinelApp(App):
     def on_connection_lost(self, event: ConnectionLost) -> None:
         """Handle loss of HTTP connection to the remote server."""
         try:
-            srv_widget = self.query_one(ServerInfoWidget)
+            srv_widget = self.screen.query_one(ServerInfoWidget)
             srv_widget.status_text = "Disconnected"
         except Exception:
             pass  # Widget not in active screen
 
         try:
-            event_log = self.query_one(EventLogWidget)
+            event_log = self.screen.query_one(EventLogWidget)
             event_log.add_event(
                 "⚠️  Connection Lost",
                 event.reason,
@@ -653,19 +714,63 @@ class SentinelApp(App):
     def on_connection_restored(self, event: ConnectionRestored) -> None:
         """Handle reconnection to the remote server."""
         try:
-            srv_widget = self.query_one(ServerInfoWidget)
+            srv_widget = self.screen.query_one(ServerInfoWidget)
             srv_widget.status_text = "Connected"
         except Exception:
             pass  # Widget not in active screen
 
         try:
-            event_log = self.query_one(EventLogWidget)
+            event_log = self.screen.query_one(EventLogWidget)
             event_log.add_event(
                 "✅ Reconnected",
                 "Connection to server restored.",
             )
         except Exception:
             pass  # Widget not in active screen
+
+    def on_backend_status_widget_backend_selected(
+        self, event: BackendStatusWidget.BackendSelected
+    ) -> None:
+        """Open the backend detail modal when a backend row is selected."""
+
+        def _handle_result(result: str | None) -> None:
+            if result is None:
+                return
+            backend_name = event.backend.get("name", "")
+            if result == "restart":
+                self.run_worker(
+                    self._reconnect_backend(backend_name),
+                    name="backend-restart",
+                    exclusive=True,
+                )
+            elif result == "disconnect":
+                self.notify(
+                    f"Disconnect '{backend_name}' — not yet supported by the management API",
+                    title="Disconnect",
+                    severity="warning",
+                    timeout=4,
+                )
+
+        self.push_screen(BackendDetailModal(event.backend), callback=_handle_result)
+
+    async def _reconnect_backend(self, name: str) -> None:
+        """Ask the management API to reconnect a specific backend."""
+        mgr = self._server_manager
+        if mgr is None:
+            return
+        client = getattr(mgr, "active_client", None)
+        if client is None:
+            return
+        try:
+            await client.post_reconnect(name)
+            self.notify(f"Reconnect '{name}' requested", title="Backend", severity="information")
+            try:
+                event_log = self.screen.query_one(EventLogWidget)
+                event_log.add_event("🔄 Reconnect", f"Requested reconnect for '{name}'")
+            except Exception:
+                pass
+        except Exception as exc:
+            self.notify(f"Reconnect failed: {exc}", title="Error", severity="error")
 
     # ── Key-bound actions ───────────────────────────────────────
 
@@ -674,7 +779,7 @@ class SentinelApp(App):
         try:
             from textual.widgets import TabbedContent
 
-            tabs = self.query_one("#cap-tabs", TabbedContent)
+            tabs = self.screen.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-tools"
         except Exception:
             logger.debug("Could not switch to tools tab", exc_info=True)
@@ -684,7 +789,7 @@ class SentinelApp(App):
         try:
             from textual.widgets import TabbedContent
 
-            tabs = self.query_one("#cap-tabs", TabbedContent)
+            tabs = self.screen.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-resources"
         except Exception:
             logger.debug("Could not switch to resources tab", exc_info=True)
@@ -694,18 +799,63 @@ class SentinelApp(App):
         try:
             from textual.widgets import TabbedContent
 
-            tabs = self.query_one("#cap-tabs", TabbedContent)
+            tabs = self.screen.query_one("#cap-tabs", TabbedContent)
             tabs.active = "tab-prompts"
         except Exception:
             logger.debug("Could not switch to prompts tab", exc_info=True)
 
     def action_quit(self) -> None:
-        """Gracefully exit the TUI."""
+        """Gracefully exit the TUI via the exit modal."""
+        # Count running backends for the pre-flight message
+        backends_running = 0
         try:
-            event_log = self.query_one(EventLogWidget)
-            event_log.add_event("🛑 Shutting Down", "User requested quit…")
+            mgr = self._server_manager
+            if mgr is not None:
+                backends_running = sum(
+                    1 for e in mgr.entries.values() if e.connected
+                )
         except Exception:
             pass
+
+        def _on_exit_choice(result: str | None) -> None:
+            if result is None:
+                return  # Cancelled
+            try:
+                event_log = self.screen.query_one(EventLogWidget)
+                event_log.add_event("🛑 Shutting Down", f"Exit mode: {result}")
+            except Exception:
+                pass
+
+            if result == "stop-and-exit":
+                # Request server shutdown before exiting
+                self.run_worker(self._shutdown_then_exit(), name="shutdown-exit")
+            else:
+                # save-and-exit: just save settings and exit
+                from mcp_sentinel.tui.settings import load_settings, save_settings
+                settings = load_settings()
+                settings["theme"] = self.theme or "textual-dark"
+                save_settings(settings)
+                self.exit()
+
+        self.push_screen(
+            ExitModal(running_count=backends_running),
+            callback=_on_exit_choice,
+        )
+
+    async def _shutdown_then_exit(self) -> None:
+        """Request server shutdown and then exit the TUI."""
+        mgr = self._server_manager
+        if mgr is not None:
+            client = getattr(mgr, "active_client", None)
+            if client is not None:
+                try:
+                    await client.post_shutdown()
+                except Exception as exc:
+                    logger.warning("Shutdown request failed: %s", exc)
+        from mcp_sentinel.tui.settings import load_settings, save_settings
+        settings = load_settings()
+        settings["theme"] = self.theme or "textual-dark"
+        save_settings(settings)
         self.exit()
 
     def action_next_theme(self) -> None:
@@ -745,3 +895,18 @@ class SentinelApp(App):
                 self.notify(f"Theme: {theme_name}", timeout=2)
 
         self.push_screen(ThemeScreen(), _on_theme_selected)
+
+    def action_export_client_config(self) -> None:
+        """Open the client configuration export modal."""
+        # Determine the server URL for the snippet
+        sse_url = self._server_url or ""
+        status = getattr(self, "_last_status", None)
+        if status is not None:
+            url = getattr(status.transport, "sse_url", None)
+            if url:
+                sse_url = url
+        if not sse_url:
+            from mcp_sentinel.constants import DEFAULT_HOST, DEFAULT_PORT
+
+            sse_url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+        self.push_screen(ClientConfigModal(server_url=sse_url))

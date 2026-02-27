@@ -1,0 +1,130 @@
+# This config correctly separates ruleset imports from individual custom rules.
+# This allows you to mix "auto" community rules with your project-specific ones.
+
+# --- Standard Community Rulesets (The "Auto" part) ---
+extends:
+  - p/python
+  - p/dockerfile
+  - p/security-audit
+  - p/secrets
+
+# --- Custom Research-Backed Rules ---
+rules:
+  - id: asyncio-dangling-task
+    message: >
+      A task was created but its reference was not stored.
+      According to the official Python docs, the event loop only keeps weak references to tasks.
+      If a task is not stored in a strong reference, it may be garbage collected mid-execution.
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern: asyncio.create_task(...)
+      - pattern-not-inside: $VAR = asyncio.create_task(...)
+      - pattern-not-inside: $VAR.append(asyncio.create_task(...))
+      - pattern-not-inside: $VAR.add(asyncio.create_task(...))
+      - pattern-not-inside: await asyncio.gather(..., asyncio.create_task(...), ...)
+      - pattern-not-inside: return asyncio.create_task(...)
+
+  - id: asyncio-blocking-call-in-async
+    message: >
+      A synchronous blocking call (like `time.sleep`, `requests.*`, or `subprocess.run`) was detected inside an `async def`.
+      Asyncio is single-threaded; blocking the event loop stops all other concurrent tasks.
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-inside: |
+          async def $FUNC(...):
+              ...
+      - pattern-either:
+          - pattern: time.sleep(...)
+          - pattern: requests.$METHOD(...)
+          - pattern: subprocess.run(...)
+          - pattern: subprocess.call(...)
+
+  - id: starlette-basehttpmiddleware-pitfalls
+    message: >
+      `BaseHTTPMiddleware` has known performance overhead and issues with `ContextVars` propagation.
+      Official Starlette documentation and maintainers suggest using pure ASGI middleware (implementing `__call__(scope, receive, send)`) 
+      for production applications and complex logic.
+    languages: [python]
+    severity: WARNING
+    pattern: |
+      class $CLASS(BaseHTTPMiddleware):
+          ...
+
+  - id: starlette-middleware-request-url-path
+    message: >
+      Using `request.url.path` in middleware can be misleading when the application is mounted under a prefix (e.g., `Mount("/api", app)`).
+      `request.url.path` returns the full path including the prefix. 
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern-inside: |
+          class $CLASS(BaseHTTPMiddleware):
+              ...
+              async def dispatch(self, $REQ, $CALL_NEXT):
+                  ...
+      - pattern: $REQ.url.path
+
+  - id: textual-worker-exit-on-error
+    message: >
+      By default, Textual `@work` workers exit the entire application on an unhandled exception (`exit_on_error=True`).
+      For production applications, it is recommended to set `exit_on_error=False` to prevent the TUI from crashing unexpectedly.
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern: "@work"
+      - pattern-not: "@work(..., exit_on_error=False, ...)"
+
+  - id: textual-worker-unhandled-exception
+    message: >
+      A Textual worker contains an `except Exception:` block that does not notify the UI.
+      In terminal applications, background failures are invisible to the user unless explicitly reported.
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern-inside: |
+          @work(...)
+          async def $FUNC(self, ...):
+              ...
+      - pattern: |
+          try:
+              ...
+          except Exception:
+              ...
+      - pattern-not-inside: |
+          except Exception:
+              ...
+              self.notify(...)
+      - pattern-not-inside: |
+          except Exception:
+              ...
+              self.app.notify(...)
+      - pattern-not-inside: |
+          except Exception:
+              ...
+              self.post_message(...)
+      - pattern-not-inside: |
+          except Exception:
+              ...
+              raise
+
+  - id: docker-user-root
+    message: >
+      The Dockerfile does not specify a non-root USER.
+      Running containers as root is a major security risk (OWASP).
+    languages: [dockerfile]
+    severity: ERROR
+    patterns:
+      - pattern: FROM ...
+      - pattern-not: USER $USER
+
+  - id: docker-pip-no-cache
+    message: >
+      `pip install` is used without `--no-cache-dir`.
+      This increases image size by storing unnecessary cache files in the container layers.
+    languages: [dockerfile]
+    severity: WARNING
+    patterns:
+      - pattern: RUN ... pip install ...
+      - pattern-not: RUN ... pip install ... --no-cache-dir ...

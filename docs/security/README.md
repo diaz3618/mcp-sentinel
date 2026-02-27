@@ -5,7 +5,7 @@ connections and outgoing backend connections.
 
 ## Security Layers
 
-```markdown
+```
 MCP Client
   │
   ▼

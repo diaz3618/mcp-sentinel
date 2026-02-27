@@ -289,7 +289,7 @@ audit:
 | `max_size_mb` | integer | `100` | Max file size before rotation (≥1) |
 | `backup_count` | integer | `5` | Number of rotated backups (≥0) |
 
-See [Audit & Observability](audit.md) for event format and details.
+See [Audit & Observability](audit/) for event format and details.
 
 ---
 
@@ -385,6 +385,60 @@ authorization:
 | `description` | string | Optional human-readable description |
 
 See [Authorization](security/authorization.md) for details.
+
+---
+
+## `registries`
+
+External registry endpoints for server discovery. Each entry defines a
+registry that the Sentinel can query for available MCP servers.
+
+```yaml
+registries:
+  - name: "official"
+    url: "https://registry.mcp.example.com"
+    priority: 100
+    auth: "api-key"
+    api_key_env: "MCP_REGISTRY_KEY"
+  - name: "internal"
+    url: "https://internal-registry.corp.local"
+    priority: 200
+    auth: "bearer"
+    token_env: "INTERNAL_REGISTRY_TOKEN"
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | **yes** | — | Unique display name for this registry |
+| `url` | string | **yes** | — | Registry endpoint URL (must start with `http://` or `https://`) |
+| `priority` | integer | no | `100` | Resolution priority (lower = checked first) |
+| `auth` | string | no | `"none"` | Authentication type: `"none"`, `"api-key"`, or `"bearer"` |
+| `api_key_env` | string | no | — | Environment variable holding the API key (when `auth: "api-key"`) |
+| `token_env` | string | no | — | Environment variable holding the bearer token (when `auth: "bearer"`) |
+
+---
+
+## `client`
+
+TUI client configuration. These settings control how the TUI connects to
+the Sentinel server and its display preferences.
+
+```yaml
+client:
+  server_url: "http://127.0.0.1:9000"
+  token: "${SENTINEL_CLIENT_TOKEN}"
+  theme: "textual-dark"
+  poll_interval: 2.0
+  servers_config: "~/.config/mcp-sentinel/servers.json"
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `server_url` | string | `"http://127.0.0.1:9000"` | URL of the Sentinel server to connect to |
+| `token` | string | — | Authentication token (optional, supports `${ENV_VAR}`) |
+| `theme` | string | `"textual-dark"` | Textual theme name for the TUI |
+| `poll_interval` | float | `2.0` | Polling interval in seconds (range: 0.5–60.0) |
+| `servers_config` | string | — | Path to `servers.json` for multi-server mode |
 
 ---
 

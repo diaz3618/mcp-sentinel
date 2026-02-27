@@ -17,7 +17,7 @@ connections.
 
 **Backend Lifecycle Phases:**
 
-```markdown
+```
 Pending → Initializing → Ready → Degraded → Failed
                            │                    │
                            └── ShuttingDown ◄───┘

@@ -72,24 +72,23 @@ class ToolbarWidget(Widget):
 
     def compose(self) -> ComposeResult:
         # ── Modes ──
-        yield Label(" Modes: ", classes="_cat-label")
-        yield _ToolbarAction("[1] Dashboard", "switch_mode('dashboard')")
-        yield _ToolbarAction("[2] Tools", "switch_mode('tools')")
-        yield _ToolbarAction("[3] Registry", "switch_mode('registry')")
-        yield _ToolbarAction("[4] Settings", "switch_mode('settings')")
+        yield Label(" ", classes="_cat-label")
+        yield _ToolbarAction("1·Dash", "switch_mode('dashboard')")
+        yield _ToolbarAction("2·Tools", "switch_mode('tools')")
+        yield _ToolbarAction("3·Reg", "switch_mode('registry')")
+        yield _ToolbarAction("4·Set", "switch_mode('settings')")
+        yield _ToolbarAction("5·Skills", "switch_mode('skills')")
+        yield _ToolbarAction("6·Edit", "switch_mode('editor')")
+        yield _ToolbarAction("7·Audit", "switch_mode('audit')")
+        yield _ToolbarAction("8·Health", "switch_mode('health')")
+        yield _ToolbarAction("9·Sec", "switch_mode('security')")
+        yield _ToolbarAction("0·Ops", "switch_mode('operations')")
         yield _ToolbarSep()
-
-        # ── Server ──
-        yield Label("Server: ", classes="_cat-label")
-        yield _ToolbarAction("Quit", "quit")
         yield _ToolbarAction("Details", "_tb_server_details")
         yield _ToolbarSep()
-
-        # ── Navigate ──
-        yield Label("Navigate: ", classes="_cat-label")
-        yield _ToolbarAction("Tools", "show_tools")
-        yield _ToolbarAction("Resources", "show_resources")
-        yield _ToolbarAction("Prompts", "show_prompts")
+        yield _ToolbarAction("T", "show_tools")
+        yield _ToolbarAction("R", "show_resources")
+        yield _ToolbarAction("P", "show_prompts")
         yield _ToolbarSep()
 
         # ── Appearance ──

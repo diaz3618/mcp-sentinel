@@ -5,7 +5,7 @@ and controlling the gateway at runtime.
 
 ## Base URL
 
-```markdown
+```
 http://<host>:<port>/manage/v1/
 ```
 

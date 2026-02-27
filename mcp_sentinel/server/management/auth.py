@@ -22,8 +22,10 @@ logger = logging.getLogger(__name__)
 # Environment variable for the management API token
 MGMT_TOKEN_ENV_VAR = "SENTINEL_MGMT_TOKEN"
 
-# Paths that never require authentication (relative to mount prefix)
-PUBLIC_PATHS = frozenset({"/health"})
+# Path suffixes that never require authentication.  The middleware
+# receives the full mounted path (e.g. ``/manage/v1/health``), so
+# we match on the trailing segment(s) rather than the exact path.
+PUBLIC_PATH_SUFFIXES = frozenset({"/health"})
 
 
 def resolve_token() -> Optional[str]:
@@ -76,8 +78,9 @@ class BearerAuthMiddleware:
 
         path = scope.get("path", "/")
 
-        # Always allow public paths
-        if path in PUBLIC_PATHS or path.rstrip("/") in PUBLIC_PATHS:
+        # Always allow public paths (suffix match handles mount prefixes)
+        stripped = path.rstrip("/")
+        if any(stripped.endswith(suffix) for suffix in PUBLIC_PATH_SUFFIXES):
             await self.app(scope, receive, send)
             return
 

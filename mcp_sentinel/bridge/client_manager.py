@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
@@ -232,6 +232,7 @@ class ClientManager:
         self._exit_stack = AsyncExitStack()
         self._devnull_files: list = []  # keep refs so GC doesn't close them early
         self._status_records: Dict[str, Any] = {}  # BackendStatusRecord instances
+        self._progress_cb: Optional[Callable[..., None]] = None
         logger.info("ClientManager initialized.")
 
     async def _init_stdio_backend(
@@ -323,6 +324,10 @@ class ClientManager:
         except ValueError:
             pass
 
+        # Notify progress display (if subscribed)
+        if self._progress_cb is not None:
+            self._progress_cb(svr_name, "initializing", f"Connecting ({svr_type})")
+
         try:
             # Resolve outgoing-auth headers (if configured)
             auth_headers = await self._resolve_auth_headers(svr_name, svr_conf)
@@ -388,6 +393,8 @@ class ClientManager:
                 record.transition(BackendPhase.READY, "Connection established")
             except ValueError:
                 pass
+            if self._progress_cb is not None:
+                self._progress_cb(svr_name, "ready")
             return True
 
         except asyncio.CancelledError:
@@ -400,6 +407,8 @@ class ClientManager:
                 record.transition(BackendPhase.FAILED, "Startup cancelled")
             except ValueError:
                 pass
+            if self._progress_cb is not None:
+                self._progress_cb(svr_name, "failed", "Startup cancelled")
             return False
         except Exception as e_start:
             _log_backend_fail(svr_name, svr_type, e_start, context="connect/initialize")
@@ -407,10 +416,17 @@ class ClientManager:
                 record.transition(BackendPhase.FAILED, str(e_start))
             except ValueError:
                 pass
+            if self._progress_cb is not None:
+                self._progress_cb(svr_name, "failed", str(e_start))
             return False
 
-    async def start_all(self, config_data: Dict[str, Dict[str, Any]]) -> None:
+    async def start_all(
+        self,
+        config_data: Dict[str, Dict[str, Any]],
+        progress_callback: Optional[Callable[..., None]] = None,
+    ) -> None:
         """Start all backend server connections based on configuration."""
+        self._progress_cb = progress_callback
         logger.info(
             "Starting all backend server connections (%s total)...",
             len(config_data),
@@ -440,6 +456,9 @@ class ClientManager:
                     )
 
         self._pending_tasks.clear()
+
+        # Clear callback reference (no longer needed after startup)
+        self._progress_cb = None
 
         active_svrs_count = len(self._sessions)
         total_svrs_count = len(config_data)

@@ -271,12 +271,24 @@ class SentinelService:
     #  Lifecycle: start
     # ------------------------------------------------------------------ #
 
-    async def start(self, config_path: str) -> None:
+    async def start(
+        self,
+        config_path: str,
+        progress_callback: "Callable[..., None] | None" = None,
+    ) -> None:
         """Execute the full startup sequence.
 
         1. Load and validate configuration
         2. Connect to backend MCP servers
         3. Discover and register capabilities
+
+        Parameters
+        ----------
+        config_path:
+            Path to the YAML configuration file.
+        progress_callback:
+            Optional callback ``(name, phase, message=None)`` invoked on
+            backend phase transitions (used by the verbose installer display).
 
         Raises:
             ConfigurationError: If config loading/validation fails.
@@ -308,7 +320,7 @@ class SentinelService:
 
             # --- Phase 2: Connect backends --------------------------------
             logger.info("Connecting %d backend service(s)...", self._backends_total)
-            await self._manager.start_all(config)
+            await self._manager.start_all(config, progress_callback=progress_callback)
             active_sessions = self._manager.get_all_sessions()
             self._backends_connected = len(active_sessions)
 

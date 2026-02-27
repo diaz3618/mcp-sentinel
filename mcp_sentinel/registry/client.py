@@ -1,7 +1,7 @@
 """Read-only async client for the MCP Registry API v0.1.
 
-Communicates with a toolhive-registry-server (or compatible) endpoint
-to list and search registered MCP servers.
+Communicates with a registry endpoint that implements the ``/v0/servers``
+REST contract to list and search registered MCP servers.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ class RegistryClient:
     Parameters
     ----------
     base_url:
-        Root URL of the registry (e.g. ``https://registry.toolhive.dev``).
+        Root URL of the registry (e.g. ``https://registry.example.com``).
     headers:
         Extra headers applied to every request (auth tokens, etc.).
     cache:

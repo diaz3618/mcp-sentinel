@@ -1,0 +1,53 @@
+"""Security configuration models (incoming auth + authorization)."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field
+
+
+class IncomingAuthConfig(BaseModel):
+    """Incoming authentication config for the MCP data plane.
+
+    Controls how connecting MCP clients are authenticated.
+    """
+
+    type: Literal["anonymous", "local", "jwt", "oidc"] = Field(
+        default="anonymous",
+        description="Auth type: anonymous (no auth), local (static token), jwt, or oidc.",
+    )
+    token: Optional[str] = Field(
+        default=None,
+        description="Static bearer token (for 'local' type). Supports ${ENV_VAR}.",
+    )
+    jwks_uri: Optional[str] = Field(
+        default=None,
+        description="JWKS URI for JWT key retrieval (for 'jwt' type).",
+    )
+    issuer: Optional[str] = Field(
+        default=None,
+        description="Expected JWT issuer (iss claim). For 'oidc' type, this is the discoverable issuer URL.",
+    )
+    audience: Optional[str] = Field(
+        default=None,
+        description="Expected JWT audience (aud claim).",
+    )
+    algorithms: List[str] = Field(
+        default_factory=lambda: ["RS256", "ES256"],
+        description="Allowed JWT signing algorithms.",
+    )
+
+
+class AuthorizationConfig(BaseModel):
+    """Role-based authorization policy config."""
+
+    enabled: bool = Field(default=False, description="Enable RBAC policy enforcement.")
+    default_effect: Literal["allow", "deny"] = Field(
+        default="deny",
+        description="Default effect when no policy matches: 'allow' or 'deny'.",
+    )
+    policies: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of authorization policy rules.",
+    )

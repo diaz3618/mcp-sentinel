@@ -9,7 +9,7 @@ managing backend connections, and coordinating subsystems.
 
 ### Startup (`service.start(config_path)`)
 
-```markdown
+```
 1. Load and validate config file
 2. Resolve secret:name references via SecretStore
 3. Initialize ClientManager with backend configs
@@ -27,7 +27,7 @@ managing backend connections, and coordinating subsystems.
 
 ### Shutdown (`service.stop()`)
 
-```markdown
+```
 1. Stop health checker
 2. Disconnect all backends gracefully
 3. Close audit logger
@@ -36,7 +36,7 @@ managing backend connections, and coordinating subsystems.
 
 ### Hot-Reload (`service.reload()`)
 
-```markdown
+```
 1. Re-read config file
 2. Diff against current config
 3. Stop removed backends

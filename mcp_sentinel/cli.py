@@ -64,7 +64,11 @@ def _find_config_file() -> str:
 
 
 async def _run_server(
-    host: str, port: int, log_lvl_cli: str, config_path: str | None = None
+    host: str,
+    port: int,
+    log_lvl_cli: str,
+    config_path: str | None = None,
+    verbosity: int = 0,
 ) -> None:
     """Async main for the headless server subcommand."""
     global uvicorn_svr_inst
@@ -95,6 +99,7 @@ async def _run_server(
     app_s.actual_log_file = log_fpath
     app_s.file_log_level_configured = cfg_log_lvl
     app_s.config_file_path = cfg_abs_path
+    app_s.verbosity = verbosity
 
     # Read transport type from config so display/management can use it.
     try:
@@ -306,6 +311,7 @@ def _cmd_server(args: argparse.Namespace) -> None:
                 port=args.port,
                 log_lvl_cli=args.log_level,
                 config_path=getattr(args, "config", None),
+                verbosity=getattr(args, "verbose", 0) or 0,
             )
         )
     except KeyboardInterrupt:
@@ -481,9 +487,41 @@ def _cmd_status(_args: argparse.Namespace) -> None:
 
 
 def _cmd_tui(args: argparse.Namespace) -> None:
-    """Entry-point for ``mcp-sentinel tui``."""
-    token: Optional[str] = args.token or os.environ.get("SENTINEL_MGMT_TOKEN")
-    servers_config: Optional[str] = getattr(args, "servers_config", None)
+    """Entry-point for ``mcp-sentinel tui``.
+
+    CLI flags take precedence.  When a flag is not supplied the
+    ``client:`` section of the loaded config file is consulted.  Env
+    vars (``SENTINEL_MGMT_TOKEN``, ``SENTINEL_TUI_SERVER``) still
+    work as a middle layer.
+    """
+    # ── Load client config from YAML (lowest priority) ───────────
+    from mcp_sentinel.config.schema import ClientConfig
+
+    client_cfg = ClientConfig()  # safe defaults
+    cfg_path = getattr(args, "config", None) or os.environ.get("SENTINEL_CONFIG")
+    if cfg_path is None:
+        for _name in ("config.yaml", "config.yml"):
+            if os.path.isfile(_name):
+                cfg_path = _name
+                break
+    if cfg_path and os.path.isfile(cfg_path):
+        try:
+            from mcp_sentinel.config.loader import load_sentinel_config
+
+            client_cfg = load_sentinel_config(cfg_path).client
+        except Exception:
+            pass  # fall through — use defaults
+
+    # CLI flag → env var → config.yaml → default
+    token: Optional[str] = (
+        args.token
+        or os.environ.get("SENTINEL_MGMT_TOKEN")
+        or client_cfg.token
+    )
+    servers_config: Optional[str] = (
+        getattr(args, "servers_config", None)
+        or client_cfg.servers_config
+    )
 
     _saved_termios = None
     try:
@@ -498,7 +536,16 @@ def _cmd_tui(args: argparse.Namespace) -> None:
         from mcp_sentinel.tui.server_manager import ServerManager
 
         # Normalise the --server URL (strip /mcp, /sse suffixes)
+        # CLI flag → env var → config.yaml → default
+        default_url_str = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
         raw_server: str = args.server
+        if raw_server == default_url_str:
+            # Flag was not explicitly provided — check env / config
+            raw_server = (
+                os.environ.get("SENTINEL_TUI_SERVER")
+                or client_cfg.server_url
+                or default_url_str
+            )
         clean_server: str = _normalise_server_url(raw_server) or raw_server
 
         # Build the ServerManager
@@ -693,6 +740,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Session name for detached mode (default: 'default' or 'sentinel-PORT'). "
             "Lowercase alphanumeric + hyphens, max 32 chars."
+        ),
+    )
+    sp_server.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help=(
+            "Increase startup verbosity. "
+            "-v shows connection progress; "
+            "-vv adds full subprocess/debug output."
         ),
     )
     sp_server.set_defaults(func=_cmd_server)

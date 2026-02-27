@@ -1,6 +1,7 @@
 """Data models for the MCP Registry API v0.1.
 
-Mirrors the server-side types exposed by toolhive-registry-server.
+Defines the client-side data types for the registry API contract
+(``ServerEntry``, ``ServerPage``, ``ToolDefinition``).
 """
 
 from __future__ import annotations

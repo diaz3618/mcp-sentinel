@@ -1,7 +1,9 @@
-"""Dashboard mode — shows server info, backends, events, and capabilities.
+"""Dashboard mode — server info, backends, events, and capabilities.
 
-The main operational screen that displays the full Sentinel dashboard
-layout with sidebar, event log, and capability tables.
+The main operational screen.  Kept intentionally clean: sidebar
+(server selector, info, backends) + event log + capability tables.
+All monitoring/operational panels live in dedicated mode screens
+(Health, Security, Operations) accessible via keyboard shortcuts.
 """
 
 from __future__ import annotations
@@ -20,19 +22,11 @@ from mcp_sentinel.tui.widgets.server_selector import ServerSelectorWidget
 class DashboardScreen(SentinelScreen):
     """Main dashboard screen."""
 
-    _initialized: bool = False
-
     def on_show(self) -> None:
-        """Trigger app-level initialization once the screen is shown.
-
-        In Textual 7.x, ``call_after_refresh`` on the *App* fires before
-        the mode-screen's widgets are composed, so we call back into the
-        app from the screen's ``on_show`` instead.  The guard flag
-        prevents re-initialization on subsequent mode switches.
-        """
-        if self._initialized:
+        """Trigger app-level initialization once the screen is shown."""
+        if getattr(self, "_ds_init_done", False):
             return
-        self._initialized = True
+        self._ds_init_done = True
         app = self.app
         if hasattr(app, "_init_after_mode_switch"):
             app._init_after_mode_switch()

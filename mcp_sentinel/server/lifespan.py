@@ -20,6 +20,7 @@ from mcp_sentinel.display.console import (
     gen_status_info,
     log_file_status,
 )
+from mcp_sentinel.display.installer import InstallerDisplay
 from mcp_sentinel.errors import BackendServerError, ConfigurationError
 from mcp_sentinel.runtime.service import SentinelService
 
@@ -27,6 +28,77 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LOG_FPATH = "unknown_sentinel.log"
 DEFAULT_LOG_LVL = "INFO"
+
+# Directories to scan for workflow YAML files (relative to cwd or project root).
+_WORKFLOW_YAML_DIRS = ("workflows", "examples/workflows")
+_YAML_EXTS = (".yaml", ".yml")
+
+
+def _discover_workflow_yamls() -> list[dict]:
+    """Scan known directories for workflow YAML files and return parsed dicts."""
+    from pathlib import Path
+
+    results: list[dict] = []
+    try:
+        import yaml  # type: ignore[import-untyped]
+    except ImportError:
+        logger.debug("pyyaml not installed — skipping YAML workflow discovery.")
+        return results
+
+    for rel_dir in _WORKFLOW_YAML_DIRS:
+        d = Path(rel_dir)
+        if not d.is_dir():
+            d = Path(__file__).resolve().parents[2] / rel_dir
+        if not d.is_dir():
+            continue
+        for fpath in sorted(d.iterdir()):
+            if fpath.suffix in _YAML_EXTS and fpath.is_file():
+                try:
+                    data = yaml.safe_load(fpath.read_text(encoding="utf-8"))
+                    if isinstance(data, dict) and data.get("name"):
+                        data.setdefault("_source", str(fpath))
+                        results.append(data)
+                except Exception:
+                    logger.debug(
+                        "Failed to parse workflow YAML: %s", fpath, exc_info=True
+                    )
+    return results
+
+
+def _load_composite_workflows(mcp_svr_instance: Any, chain: Any) -> None:
+    """Discover workflow YAML files and register them as composite tools.
+
+    The ``invoke_tool`` callback delegates to the middleware chain so that
+    composite tool steps benefit from audit, recovery, and routing middleware.
+    """
+    from mcp_sentinel.bridge.middleware.chain import RequestContext
+    from mcp_sentinel.workflows.composite_tool import load_composite_tools
+
+    wf_defs = _discover_workflow_yamls()
+    if not wf_defs:
+        mcp_svr_instance.composite_tools = []
+        logger.debug("No composite workflow definitions found.")
+        return
+
+    async def _invoke_via_chain(tool_name: str, arguments: dict) -> Any:
+        """Route a tool call through the middleware chain."""
+        ctx = RequestContext(
+            capability_name=tool_name,
+            mcp_method="call_tool",
+            arguments=arguments,
+        )
+        result = await chain(ctx)
+        if ctx.error is not None:
+            raise ctx.error
+        return result
+
+    tools = load_composite_tools(wf_defs, _invoke_via_chain)
+    mcp_svr_instance.composite_tools = tools
+    logger.info(
+        "Loaded %d composite workflow tool(s): %s",
+        len(tools),
+        [t.name for t in tools],
+    )
 
 
 def _attach_to_mcp_server(
@@ -120,6 +192,9 @@ def _attach_to_mcp_server(
     mcp_svr_instance.feature_flags = FeatureFlags(ff_overrides)
     logger.info("Feature flags: %s", mcp_svr_instance.feature_flags)
 
+    # ── Composite Workflows (Task 6) ────────────────────────────────
+    _load_composite_workflows(mcp_svr_instance, chain)
+
 
 @asynccontextmanager
 async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
@@ -184,8 +259,34 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
         disp_console_status("Initialization", status_info_init)
         log_file_status(status_info_init)
 
+        # ── Verbose installer display ────────────────
+        verbosity: int = getattr(app_s, "verbosity", 0)
+        installer_display: InstallerDisplay | None = None
+        progress_callback = None
+
+        if verbosity >= 1 and config_path:
+            try:
+                from mcp_sentinel.config.loader import load_and_validate_config
+
+                raw_config = load_and_validate_config(config_path)
+                installer_display = InstallerDisplay(raw_config)
+                installer_display.render_initial()
+                progress_callback = installer_display.make_callback()
+            except Exception:
+                # Non-fatal — fall back to normal (non-verbose) output
+                logger.debug(
+                    "Could not initialise installer display; "
+                    "falling back to standard output.",
+                    exc_info=True,
+                )
+                installer_display = None
+
         # ── Delegate full startup to SentinelService ─────────────────
-        await service.start(config_path)
+        await service.start(config_path, progress_callback=progress_callback)
+
+        # Finalize the installer display (print summary line)
+        if installer_display is not None:
+            installer_display.finalize()
 
         # ── Monkey-patch bridge components onto mcp_server ───────────
         _attach_to_mcp_server(mcp_server, service)

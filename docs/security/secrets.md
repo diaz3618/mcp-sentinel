@@ -6,7 +6,7 @@ and resolved at startup — they never appear in plaintext in config or logs.
 
 ## Architecture
 
-```markdown
+```
 Config file                    SecretStore
   │                               │
   │  secret:my-api-key        ┌───┴─────────────────┐
@@ -51,7 +51,7 @@ mcp-sentinel secret set db-password
 
 Maps secret names to environment variables using a convention:
 
-```markdown
+```
 secret name:  my-api-key
 env var:      SECRET_MY_API_KEY
 ```

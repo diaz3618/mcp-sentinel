@@ -7,7 +7,7 @@ recovery) without coupling them to business logic.
 
 ## Chain Architecture
 
-```markdown
+```
      Client Request
            │
            ▼
@@ -97,7 +97,7 @@ audit file. Otherwise falls back to standard Python logging.
 
 - Emits `AuditEvent` with source, target, outcome, and timing
 - Events are NIST SP 800-53 AU-3 aligned
-- See [Audit & Observability](audit.md) for the event format
+- See [Audit & Observability](audit/) for the event format
 
 ### RecoveryMiddleware
 

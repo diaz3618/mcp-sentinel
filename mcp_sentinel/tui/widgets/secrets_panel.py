@@ -1,0 +1,208 @@
+"""Secret management widget — encrypted secret store UI.
+
+Displays stored secrets with masked values, reference syntax,
+and provides CRUD operations for the secret store.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from textual.app import ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Input, Label, Select, Static
+from textual.widget import Widget
+
+logger = logging.getLogger(__name__)
+
+
+class SecretsPanel(Widget):
+    """Secrets management panel for settings."""
+
+    DEFAULT_CSS = """
+    SecretsPanel {
+        height: auto;
+        max-height: 20;
+        border: round $accent;
+        padding: 0 1;
+    }
+    #secrets-title {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 0;
+    }
+    #secrets-store-info {
+        height: 1;
+        color: $text-muted;
+    }
+    #secrets-table {
+        height: auto;
+        max-height: 10;
+    }
+    #secrets-ref-hint {
+        height: 1;
+        padding: 0 1;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    #secrets-actions {
+        height: 3;
+        padding: 0 1;
+    }
+    #secrets-actions Button {
+        margin-right: 1;
+    }
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._secrets: List[Dict[str, Any]] = []
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label("[b]Secrets Manager[/b]", id="secrets-title")
+            yield Static("Store: AES-256-GCM (local)    [Unlock 🔓]", id="secrets-store-info")
+            yield DataTable(id="secrets-table")
+            yield Static(
+                "Config reference syntax:  {{ secrets.name }}",
+                id="secrets-ref-hint",
+            )
+            with Horizontal(id="secrets-actions"):
+                yield Button("New Secret", id="btn-secret-new", variant="primary")
+                yield Button("Edit", id="btn-secret-edit", variant="default")
+                yield Button("Delete", id="btn-secret-delete", variant="error")
+                yield Button("Rotate", id="btn-secret-rotate", variant="warning")
+
+    def on_mount(self) -> None:
+        try:
+            table = self.query_one("#secrets-table", DataTable)
+            table.add_columns("Name", "Source", "Used By", "Last Set")
+            table.cursor_type = "row"
+            table.zebra_stripes = True
+        except Exception:
+            pass
+
+    def update_secrets(self, secrets: List[Dict[str, Any]]) -> None:
+        """Refresh the secrets table."""
+        self._secrets = secrets
+        try:
+            table = self.query_one("#secrets-table", DataTable)
+            table.clear()
+            for s in secrets:
+                name = s.get("name", "?")
+                source = s.get("source", "encrypted")
+                used_by = s.get("used_by", "—")
+                last_set = s.get("last_set", "—")
+                table.add_row(name, source, used_by, str(last_set))
+        except Exception:
+            logger.debug("Cannot update secrets", exc_info=True)
+
+
+class SecretEditorModal(ModalScreen[Optional[Dict[str, str]]]):
+    """Modal for creating or editing a secret."""
+
+    DEFAULT_CSS = """
+    SecretEditorModal {
+        align: center middle;
+    }
+    #secret-editor-dialog {
+        width: 60;
+        height: auto;
+        max-height: 20;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    #se-title {
+        text-style: bold;
+        text-align: center;
+        margin-bottom: 1;
+    }
+    .se-row {
+        height: 3;
+        align: left middle;
+        margin-bottom: 1;
+    }
+    .se-label {
+        width: 14;
+        content-align: left middle;
+        color: $text-muted;
+    }
+    .se-row Input {
+        width: 1fr;
+    }
+    .se-row Select {
+        width: 1fr;
+    }
+    #se-actions {
+        height: 3;
+        align: center middle;
+    }
+    #se-actions Button {
+        margin: 0 1;
+    }
+    """
+
+    BINDINGS = [("escape", "cancel", "Cancel")]
+
+    def __init__(self, existing: Optional[Dict[str, str]] = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._existing = existing
+
+    def compose(self) -> ComposeResult:
+        title = "Edit Secret" if self._existing else "New Secret"
+        with Vertical(id="secret-editor-dialog"):
+            yield Label(f"[b]{title}[/b]", id="se-title")
+
+            with Horizontal(classes="se-row"):
+                yield Label("Name:", classes="se-label")
+                yield Input(
+                    value=self._existing.get("name", "") if self._existing else "",
+                    id="se-name-input",
+                    placeholder="secret_name",
+                )
+            with Horizontal(classes="se-row"):
+                yield Label("Value:", classes="se-label")
+                yield Input(
+                    value="",
+                    id="se-value-input",
+                    password=True,
+                    placeholder="secret value",
+                )
+            with Horizontal(classes="se-row"):
+                yield Label("Source:", classes="se-label")
+                yield Select(
+                    [
+                        ("encrypted", "encrypted"),
+                        ("keyring", "keyring"),
+                        ("env", "env"),
+                        ("1password", "1password"),
+                    ],
+                    value=self._existing.get("source", "encrypted") if self._existing else "encrypted",
+                    id="se-source-select",
+                    allow_blank=False,
+                )
+
+            with Horizontal(id="se-actions"):
+                yield Button("Save", variant="primary", id="btn-se-save")
+                yield Button("Cancel", variant="default", id="btn-se-cancel")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-se-save":
+            try:
+                name = self.query_one("#se-name-input", Input).value.strip()
+                value = self.query_one("#se-value-input", Input).value
+                source = self.query_one("#se-source-select", Select).value
+                if not name:
+                    self.notify("Secret name is required", severity="warning")
+                    return
+                self.dismiss({"name": name, "value": value, "source": str(source)})
+            except Exception:
+                self.dismiss(None)
+        elif event.button.id == "btn-se-cancel":
+            self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)

@@ -15,7 +15,7 @@ mcp-sentinel server [--host HOST] [--port PORT] [--log-level LEVEL] [--config PA
 | `--host` | string | `127.0.0.1` | Bind address |
 | `--port` | integer | `9000` | Listen port |
 | `--log-level` | string | `info` | Log level: `debug`, `info`, `warning`, `error`, `critical` |
-| `--config` | path | auto-detect | Path to config file (JSON or YAML) |
+| `--config` | path | auto-detect | Path to config file (YAML) |
 
 ## Config File Resolution
 

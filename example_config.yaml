@@ -2,7 +2,7 @@
 # Copy this file to config.yaml and edit to match your setup.
 # Documentation: docs/configuration.md
 #
-# Supported formats: YAML (.yaml, .yml) and JSON (.json)
+# Supported formats: YAML (.yaml, .yml)
 # Environment variables: use ${VAR_NAME} syntax for expansion
 # Secret references: use secret:my-key to resolve from the secret store
 
@@ -16,6 +16,16 @@ server:
   management:
     enabled: true
     token: "${SENTINEL_MGMT_TOKEN}" # Bearer token for /manage/v1/ endpoints
+
+# ── Client / TUI Settings ────────────────────────────────────────────────
+# Settings used by ``mcp-sentinel tui`` and _dev_launch.py.
+# CLI flags take precedence over these values.
+client:
+  server_url: "http://127.0.0.1:9000"  # Sentinel server URL the TUI connects to
+  # token: "${SENTINEL_MGMT_TOKEN}"    # Bearer token for management API
+  theme: "textual-dark"                 # Default TUI theme
+  poll_interval: 2.0                    # Status polling interval (seconds, 0.5–60)
+  # servers_config: "~/.config/mcp-sentinel/servers.json"  # Multi-server config
 
 # ── Backend MCP Servers ──────────────────────────────────────────────────
 backends:
@@ -85,6 +95,30 @@ audit:
 optimizer:
   enabled: false                    # replaces full tool list with find_tool + call_tool
   keep_tools: []                    # tools always exposed alongside meta-tools
+
+# ── Registries ───────────────────────────────────────────────────────────
+# External catalogs of MCP servers for the TUI Registry browser.
+# Configure at least one to use the Registry feature (browse & install).
+# Nothing is included by default — add the registries you want to use.
+#
+# See docs/registry/README.md for the full list of public registries and
+# instructions on running your own.
+registries:
+  # - name: community
+  #   url: "https://glama.ai/api/mcp"       # 17,800+ servers
+  #   priority: 100                           # lower = checked first
+  #   auth: none
+  #
+  # - name: smithery
+  #   url: "https://registry.smithery.ai"    # 4,500+ MCPs
+  #   priority: 200
+  #   auth: none
+  #
+  # - name: internal
+  #   url: "https://registry.corp.example.com/v0/servers"
+  #   priority: 50
+  #   auth: api-key
+  #   api_key_env: INTERNAL_REGISTRY_KEY     # reads from env var
 
 # ── Incoming Authentication ──────────────────────────────────────────────
 incoming_auth:

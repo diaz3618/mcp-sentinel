@@ -50,7 +50,7 @@ Resources are formatted as `type:name`:
 
 ## Evaluation Logic
 
-```markdown
+```
 Request arrives with UserIdentity (from auth middleware)
   │
   ├─ For each policy (in order):
