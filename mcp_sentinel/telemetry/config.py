@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 # Detect optional OTel packages
 try:
-    from opentelemetry import metrics as otel_metrics  # type: ignore[import-untyped]
-    from opentelemetry import trace  # type: ignore[import-untyped]
+    from opentelemetry import metrics as otel_metrics
+    from opentelemetry import trace
 
     _HAS_OTEL = True
 except ImportError:
@@ -58,19 +58,19 @@ class TelemetryConfig:
 
         try:
             from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
-                OTLPMetricExporter,  # type: ignore[import-untyped]
+                OTLPMetricExporter,
             )
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter,  # type: ignore[import-untyped]
+                OTLPSpanExporter,
             )
-            from opentelemetry.sdk.metrics import MeterProvider  # type: ignore[import-untyped]
+            from opentelemetry.sdk.metrics import MeterProvider
             from opentelemetry.sdk.metrics.export import (
-                PeriodicExportingMetricReader,  # type: ignore[import-untyped]
+                PeriodicExportingMetricReader,
             )
-            from opentelemetry.sdk.resources import Resource  # type: ignore[import-untyped]
-            from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
+            from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import (
-                BatchSpanProcessor,  # type: ignore[import-untyped]
+                BatchSpanProcessor,
             )
         except ImportError as exc:
             logger.warning("OTel SDK packages not fully installed: %s", exc)

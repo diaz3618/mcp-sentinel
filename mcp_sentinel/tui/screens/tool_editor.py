@@ -9,7 +9,6 @@ Sub-screen within Settings mode for customizing tools:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import Any, Dict, List, Optional

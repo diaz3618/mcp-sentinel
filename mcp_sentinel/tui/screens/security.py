@@ -7,7 +7,6 @@ scattered across Settings tabs into a single focused mode.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical

@@ -10,8 +10,8 @@ from textual.app import ComposeResult
 from textual.widgets import TabbedContent, TabPane
 
 from mcp_sentinel.tui.screens.base import SentinelScreen
-from mcp_sentinel.tui.widgets.otel_panel import OTelPanel
 from mcp_sentinel.tui.widgets.optimizer_panel import OptimizerPanel
+from mcp_sentinel.tui.widgets.otel_panel import OTelPanel
 from mcp_sentinel.tui.widgets.sync_status import SyncStatusWidget
 from mcp_sentinel.tui.widgets.workflows_panel import WorkflowsPanel
 

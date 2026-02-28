@@ -11,7 +11,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 try:
-    from opentelemetry import metrics as otel_metrics  # type: ignore[import-untyped]
+    from opentelemetry import metrics as otel_metrics
 
     _HAS_OTEL = True
 except ImportError:
@@ -83,7 +83,7 @@ def record_request(
 
 
 class _NoOpCounter:
-    def add(self, amount: int, attributes: Optional[dict] = None) -> None:
+    def add(self, _amount: int, attributes: Optional[dict] = None) -> None:
         pass
 
 

@@ -14,7 +14,6 @@ from mcp_sentinel.bridge.optimizer.meta_tools import (
 )
 from mcp_sentinel.bridge.optimizer.search import ToolIndex, _simple_score, _tokenize
 
-
 # ── Helper: fake MCP Tool objects ────────────────────────────────────────
 
 

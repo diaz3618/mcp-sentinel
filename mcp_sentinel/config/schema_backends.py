@@ -6,10 +6,9 @@ MCP servers, along with shared sub-models (timeouts, filters, auth).
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union
+from typing import Annotated, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # ── Shared per-backend configs ───────────────────────────────────────────
 

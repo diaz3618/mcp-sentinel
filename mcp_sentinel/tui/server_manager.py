@@ -19,9 +19,11 @@ logger = logging.getLogger(__name__)
 
 # ── Persistence path ────────────────────────────────────────────────
 
-_CONFIG_DIR = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "mcp-sentinel",
+_CONFIG_DIR = os.path.realpath(
+    os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        "mcp-sentinel",
+    )
 )
 _SERVERS_FILE = os.path.join(_CONFIG_DIR, "servers.json")
 

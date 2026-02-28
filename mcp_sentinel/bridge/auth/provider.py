@@ -109,6 +109,7 @@ class OAuth2Provider(AuthProvider):
         if self._scopes:
             data["scope"] = " ".join(self._scopes)
 
+        # nosemgrep: python-logger-credential-disclosure (logs URL, not credentials)
         logger.debug("OAuth2 token request → %s", self._token_url)
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(self._token_url, data=data)

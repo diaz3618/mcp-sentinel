@@ -13,7 +13,7 @@ from typing import Any, Generator, Optional
 logger = logging.getLogger(__name__)
 
 try:
-    from opentelemetry import trace  # type: ignore[import-untyped]
+    from opentelemetry import trace
 
     _HAS_OTEL = True
 except ImportError:

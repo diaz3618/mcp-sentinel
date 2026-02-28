@@ -79,7 +79,7 @@ class RoutingMiddleware:
             return result
 
         except asyncio.TimeoutError:
-            logger.error(
+            logger.debug(
                 "[%s] Timeout: %s → %s/%s",
                 ctx.request_id,
                 ctx.capability_name,
@@ -88,7 +88,7 @@ class RoutingMiddleware:
             )
             raise
         except (ConnectionError, BrokenPipeError) as exc:
-            logger.error(
+            logger.debug(
                 "[%s] Connection lost: %s → %s: %s",
                 ctx.request_id,
                 ctx.capability_name,

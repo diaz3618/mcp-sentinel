@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json as _json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical

@@ -121,7 +121,7 @@ class ToolIndex:
             if hasattr(t, "inputSchema"):
                 schema = t.inputSchema or {}
             elif isinstance(t, dict):
-                schema = t.get("inputSchema", t.get("input_schema", {}))
+                schema = t.get("inputSchema", t.get("input_schema", {})) or {}
 
             backend = ""
             if route_map and name in route_map:

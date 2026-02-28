@@ -11,9 +11,9 @@ import logging
 from typing import Any, Dict, List
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
-from textual.widgets import DataTable, Label, Static
+from textual.containers import Vertical
 from textual.widget import Widget
+from textual.widgets import DataTable, Label, Static
 
 logger = logging.getLogger(__name__)
 

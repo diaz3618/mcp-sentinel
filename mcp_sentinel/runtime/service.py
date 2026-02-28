@@ -10,7 +10,7 @@ import asyncio
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from mcp import types as mcp_types
 
@@ -215,7 +215,7 @@ class SentinelService:
                     if backend.tool_overrides:
                         rename_maps[name] = RenameMap(
                             overrides={
-                                k: {"name": v.name, "description": v.description}
+                                k: {"name": v.name or "", "description": v.description or ""}
                                 for k, v in backend.tool_overrides.items()
                             }
                         )

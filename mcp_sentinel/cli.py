@@ -275,7 +275,7 @@ def _cmd_server(args: argparse.Namespace) -> None:
         return
     _force_exit_count = 0
 
-    def _sigint_handler(sig: int, frame: object) -> None:
+    def _sigint_handler(sig: int, _frame: object) -> None:
         nonlocal _force_exit_count
         _force_exit_count += 1
         if _force_exit_count >= 2:
@@ -287,7 +287,7 @@ def _cmd_server(args: argparse.Namespace) -> None:
         if uvicorn_svr_inst is not None:
             uvicorn_svr_inst.should_exit = True
 
-    def _sigterm_handler(sig: int, frame: object) -> None:
+    def _sigterm_handler(sig: int, _frame: object) -> None:
         module_logger.info("SIGTERM received — shutting down gracefully…")
         if uvicorn_svr_inst is not None:
             uvicorn_svr_inst.should_exit = True
@@ -596,7 +596,7 @@ def _restore_terminal(saved_termios: object | None) -> None:
             import termios
 
             fd = sys.stdin.fileno()
-            termios.tcsetattr(fd, termios.TCSANOW, saved_termios)
+            termios.tcsetattr(fd, termios.TCSANOW, saved_termios)  # type: ignore[arg-type]
         except Exception:
             pass
 

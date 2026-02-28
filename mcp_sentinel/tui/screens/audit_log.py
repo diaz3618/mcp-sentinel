@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json as _json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -112,9 +112,9 @@ class AuditLogScreen(SentinelScreen):
                     status_display = f"[red]✕ {status}[/red]"
                 elif status == "denied":
                     denied += 1
-                    status_display = f"[yellow]⚠ denied[/yellow]"
+                    status_display = "[yellow]⚠ denied[/yellow]"
                 else:
-                    status_display = f"[green]✓[/green]"
+                    status_display = "[green]✓[/green]"
 
                 table.add_row(ts, user, method, tool, server, lat_str, status_display)
 

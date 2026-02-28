@@ -153,7 +153,8 @@ def register_handlers(mcp_server: McpServer) -> None:
                         )
                     ]
                 except Exception as exc:
-                    logger.error(
+                    # (final handler boundary — this IS the error handler)
+                    logger.error(  # nosemgrep: code-quality-logging-error-without-handling
                         "Composite workflow '%s' failed: %s", name, exc, exc_info=True
                     )
                     raise BackendServerError(

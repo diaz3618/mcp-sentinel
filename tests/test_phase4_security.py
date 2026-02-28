@@ -10,54 +10,18 @@ Covers:
 from __future__ import annotations
 
 import asyncio
-import json
 import os
-import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
-# ── JWT / Auth constructs ────────────────────────────────────────────────
-
-from mcp_sentinel.server.auth.jwt import (
-    JWTConfig,
-    JWTValidationError,
-    TokenClaims,
-    _norm_aud,
-)
-from mcp_sentinel.server.auth.providers import (
-    AnonymousProvider,
-    AuthenticationError,
-    AuthProviderRegistry,
-    JWTAuthProvider,
-    LocalTokenProvider,
-    UserIdentity,
-)
-
-# ── RBAC constructs ──────────────────────────────────────────────────────
-
-from mcp_sentinel.server.authz.engine import PolicyEngine
-from mcp_sentinel.server.authz.policies import (
-    AuthzPolicy,
-    PolicyDecision,
-    _resource_matches,
-    load_policies,
-)
-
 # ── Middleware ───────────────────────────────────────────────────────────
-
 from mcp_sentinel.bridge.middleware.auth import AuthMiddleware
 from mcp_sentinel.bridge.middleware.authz import AuthorizationError, AuthzMiddleware
 from mcp_sentinel.bridge.middleware.chain import RequestContext
 from mcp_sentinel.bridge.middleware.telemetry import TelemetryMiddleware
 
-# ── Telemetry (no-op paths) ─────────────────────────────────────────────
-
-from mcp_sentinel.telemetry.tracing import get_tracer, start_span
-from mcp_sentinel.telemetry.metrics import get_meter, record_request
-
 # ── Secrets ──────────────────────────────────────────────────────────────
-
 from mcp_sentinel.secrets.providers import EnvProvider, FileProvider, create_provider
 from mcp_sentinel.secrets.resolver import (
     SecretResolutionError,
@@ -66,6 +30,32 @@ from mcp_sentinel.secrets.resolver import (
 )
 from mcp_sentinel.secrets.store import SecretStore
 
+# ── JWT / Auth constructs ────────────────────────────────────────────────
+from mcp_sentinel.server.auth.jwt import (
+    JWTConfig,
+    TokenClaims,
+    _norm_aud,
+)
+from mcp_sentinel.server.auth.providers import (
+    AnonymousProvider,
+    AuthenticationError,
+    AuthProviderRegistry,
+    LocalTokenProvider,
+    UserIdentity,
+)
+
+# ── RBAC constructs ──────────────────────────────────────────────────────
+from mcp_sentinel.server.authz.engine import PolicyEngine
+from mcp_sentinel.server.authz.policies import (
+    AuthzPolicy,
+    PolicyDecision,
+    _resource_matches,
+    load_policies,
+)
+from mcp_sentinel.telemetry.metrics import get_meter, record_request
+
+# ── Telemetry (no-op paths) ─────────────────────────────────────────────
+from mcp_sentinel.telemetry.tracing import get_tracer, start_span
 
 # ═══════════════════════════════════════════════════════════════════════
 # Task 4.1: JWT / OIDC / Auth

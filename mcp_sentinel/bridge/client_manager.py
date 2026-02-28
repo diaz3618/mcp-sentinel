@@ -111,7 +111,7 @@ async def _manage_subproc(
         yield process
 
     except FileNotFoundError:
-        logger.error(
+        logger.debug(
             "[%s] Failed to start local process: command '%s' not found.",
             svr_name,
             actual_cmd,
@@ -119,7 +119,7 @@ async def _manage_subproc(
         )
         raise
     except Exception:
-        logger.error(
+        logger.debug(
             "[%s] Unexpected error starting local process '%s'.",
             svr_name,
             actual_cmd,

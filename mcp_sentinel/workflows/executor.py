@@ -79,7 +79,7 @@ class WorkflowExecutor:
             level_results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for step, result in zip(level, level_results):
-                if isinstance(result, Exception):
+                if isinstance(result, BaseException):
                     sr = StepResult(
                         step_id=step.id,
                         status=StepStatus.FAILED,

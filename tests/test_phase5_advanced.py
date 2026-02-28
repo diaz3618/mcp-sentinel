@@ -14,7 +14,6 @@ import json
 import os
 import tempfile
 from typing import Any, Dict
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -74,7 +73,6 @@ class TestStep:
 # 5.1 Workflow — DSL
 # ---------------------------------------------------------------------------
 from mcp_sentinel.workflows.dsl import (
-    WorkflowDefinition,
     WorkflowValidationError,
     parse_workflow,
 )
@@ -178,7 +176,7 @@ class TestTopologicalOrder:
 # ---------------------------------------------------------------------------
 # 5.1 Workflow — Executor
 # ---------------------------------------------------------------------------
-from mcp_sentinel.workflows.executor import WorkflowExecutionError, WorkflowExecutor
+from mcp_sentinel.workflows.executor import WorkflowExecutor
 
 
 def _make_tool_invoker(results: Dict[str, Any] | None = None):
@@ -719,7 +717,7 @@ class TestSkillManifest:
 # ---------------------------------------------------------------------------
 # 5.6 Skills — Manager
 # ---------------------------------------------------------------------------
-from mcp_sentinel.skills.manager import InstalledSkill, SkillManager, SkillStatus
+from mcp_sentinel.skills.manager import SkillManager, SkillStatus
 
 
 class TestSkillStatus:
