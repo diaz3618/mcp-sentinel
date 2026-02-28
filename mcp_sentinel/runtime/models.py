@@ -66,17 +66,20 @@ class BackendInfo(BaseModel):
 
 
 class BackendPhase(str, Enum):
-    """6-state lifecycle phases for individual backend servers.
+    """7-state lifecycle phases for individual backend servers.
 
     Transitions::
 
         PENDING → INITIALIZING → READY → DEGRADED → FAILED
-                                   ↗         ↘
-                              SHUTTING_DOWN   READY
+                       ↑           ↗         ↘
+                  RETRYING    SHUTTING_DOWN   READY
+                       ↑
+                     FAILED
     """
 
     PENDING = "pending"
     INITIALIZING = "initializing"
+    RETRYING = "retrying"
     READY = "ready"
     DEGRADED = "degraded"
     FAILED = "failed"
@@ -87,13 +90,16 @@ class BackendPhase(str, Enum):
 _BACKEND_TRANSITIONS: Dict[BackendPhase, frozenset[BackendPhase]] = {
     BackendPhase.PENDING: frozenset({BackendPhase.INITIALIZING}),
     BackendPhase.INITIALIZING: frozenset({BackendPhase.READY, BackendPhase.FAILED}),
+    BackendPhase.RETRYING: frozenset({BackendPhase.INITIALIZING, BackendPhase.FAILED}),
     BackendPhase.READY: frozenset(
         {BackendPhase.DEGRADED, BackendPhase.FAILED, BackendPhase.SHUTTING_DOWN}
     ),
     BackendPhase.DEGRADED: frozenset(
         {BackendPhase.READY, BackendPhase.FAILED, BackendPhase.SHUTTING_DOWN}
     ),
-    BackendPhase.FAILED: frozenset({BackendPhase.INITIALIZING, BackendPhase.SHUTTING_DOWN}),
+    BackendPhase.FAILED: frozenset(
+        {BackendPhase.INITIALIZING, BackendPhase.RETRYING, BackendPhase.SHUTTING_DOWN}
+    ),
     BackendPhase.SHUTTING_DOWN: frozenset(),
 }
 

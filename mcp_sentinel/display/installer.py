@@ -32,6 +32,7 @@ class DisplayPhase(str, Enum):
     PENDING = "pending"
     INITIALIZING = "initializing"
     DOWNLOADING = "downloading"     # docker pull / npm install
+    RETRYING = "retrying"           # automatic retry after failure
     READY = "ready"
     FAILED = "failed"
     SKIPPED = "skipped"
@@ -389,6 +390,16 @@ class InstallerDisplay:
                 entry.task_id,
                 status_msg=msg,
                 current_status_style=style.status_style,
+            )
+        elif entry.phase == DisplayPhase.RETRYING:
+            msg = entry.message or "Retrying..."
+            # Reset completed so the spinner reappears
+            self._progress.update(
+                entry.task_id,
+                completed=0,
+                status_msg=msg,
+                current_status_style="yellow",
+                spinner_style="bold yellow",
             )
         elif entry.phase == DisplayPhase.INITIALIZING:
             msg = entry.message or "Initializing..."

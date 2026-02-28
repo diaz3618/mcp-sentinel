@@ -15,7 +15,6 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header
 
 from mcp_sentinel.constants import (
-    AUTHOR,
     SERVER_NAME,
     SERVER_VERSION,
 )
@@ -75,7 +74,7 @@ class SentinelApp(App):
     """Textual TUI for the MCP Sentinel server."""
 
     TITLE = f"{SERVER_NAME} v{SERVER_VERSION}"
-    SUB_TITLE = f"by {AUTHOR}"
+    SUB_TITLE = ""
     CSS_PATH = "sentinel.tcss"
 
     BINDINGS = [
@@ -325,7 +324,6 @@ class SentinelApp(App):
             info = scr.query_one(ServerInfoWidget)
             info.server_name = SERVER_NAME
             info.server_version = SERVER_VERSION
-            info.author = AUTHOR
 
             event_log = scr.query_one(EventLogWidget)
             event_log.start_capture()

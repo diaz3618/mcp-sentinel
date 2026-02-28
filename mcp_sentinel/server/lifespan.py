@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator, Optional
 
 from starlette.applications import Starlette
 
-from mcp_sentinel.constants import AUTHOR, SERVER_NAME, SERVER_VERSION
+from mcp_sentinel.constants import SERVER_NAME, SERVER_VERSION
 from mcp_sentinel.display.console import (
     disp_console_status,
     gen_status_info,
@@ -212,7 +212,6 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
         SERVER_NAME,
         SERVER_VERSION,
     )
-    logger.info("Author: %s", AUTHOR)
     logger.debug(
         "Lifespan received host='%s', port=%s",
         getattr(app_s, "host", "N/A"),

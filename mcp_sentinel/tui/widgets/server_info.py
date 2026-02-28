@@ -9,7 +9,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
-from mcp_sentinel.constants import AUTHOR, SERVER_NAME, SERVER_VERSION
+from mcp_sentinel.constants import SERVER_NAME, SERVER_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ class ServerInfoWidget(Widget):
 
     server_name: reactive[str] = reactive(SERVER_NAME)
     server_version: reactive[str] = reactive(SERVER_VERSION)
-    author: reactive[str] = reactive(AUTHOR)
     sse_url: reactive[str] = reactive("N/A")
     streamable_http_url: reactive[str] = reactive("N/A")
     transport_type: reactive[str] = reactive("streamable-http")
@@ -47,7 +46,6 @@ class ServerInfoWidget(Widget):
             url_value = self.sse_url
 
         lines = [
-            f"[b]Author:[/b]  {self.author}",
             f"[b]{url_label}:[/b]  {url_value}",
             "",
             f"[b]Status:[/b]  {self.status_text}",
@@ -66,9 +64,6 @@ class ServerInfoWidget(Widget):
         self._refresh_display()
 
     def watch_server_version(self) -> None:
-        self._refresh_display()
-
-    def watch_author(self) -> None:
         self._refresh_display()
 
     def watch_sse_url(self) -> None:

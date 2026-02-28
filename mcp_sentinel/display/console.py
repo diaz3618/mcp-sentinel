@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 from mcp import types as mcp_types
 
 from mcp_sentinel.constants import (
-    AUTHOR,
     DEFAULT_LOG_FILE,
     DEFAULT_LOG_LEVEL,
     SERVER_NAME,
@@ -82,7 +81,7 @@ def gen_status_info(
 
 def disp_console_status(stage: str, status_info: Dict[str, Any], is_final: bool = False) -> None:
     """Print formatted status information to the console (headless mode)."""
-    header = f" MCP Sentinel v{SERVER_VERSION} (by {AUTHOR}) "
+    header = f" MCP Sentinel v{SERVER_VERSION} "
     sep_char = "="
     line_len = 70
 
@@ -136,7 +135,6 @@ def log_file_status(status_info: Dict[str, Any], log_lvl: int = logging.INFO) ->
     """Write detailed status information to the log file."""
     log_lines = [
         f"Server Status Update: {status_info['status_msg']}",
-        f"  Author: {AUTHOR}",
         f"  SSE URL: {status_info['sse_url']}",
         f"  Streamable HTTP URL: {status_info.get('streamable_http_url', 'N/A')}",
         f"  Transport: {status_info.get('transport_type', 'streamable-http')}",

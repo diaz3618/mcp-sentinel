@@ -98,6 +98,12 @@ def _backend_to_dict(
         entry["cap_fetch_timeout"] = cfg.timeouts.cap_fetch
     if cfg.timeouts.sse_startup is not None:
         entry["sse_startup_delay"] = cfg.timeouts.sse_startup
+    if cfg.timeouts.startup is not None:
+        entry["startup_timeout"] = cfg.timeouts.startup
+    if cfg.timeouts.retries is not None:
+        entry["retries"] = cfg.timeouts.retries
+    if cfg.timeouts.retry_delay is not None:
+        entry["retry_delay"] = cfg.timeouts.retry_delay
     return entry
 
 

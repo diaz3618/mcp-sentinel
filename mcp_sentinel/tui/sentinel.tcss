@@ -9,13 +9,13 @@ Screen {
 /* ── Top-level layout ───────────────────────────────────────────── */
 
 #top-row {
-    height: 1fr;
-    min-height: 12;
+    height: 2fr;
+    min-height: 14;
 }
 
 #sidebar {
-    width: 48;
-    min-width: 38;
+    width: 65;
+    min-width: 60;
     height: 100%;
 }
 
@@ -79,7 +79,6 @@ BackendStatusWidget {
     max-height: 12;
     border: round $accent;
     padding: 0 1;
-    dock: bottom;
 }
 
 BackendStatusWidget #backend-title {
@@ -151,7 +150,6 @@ EventLogWidget RichLog {
 #cap-section {
     height: 1fr;
     min-height: 8;
-    margin-top: 1;
     border: round $accent;
 }
 

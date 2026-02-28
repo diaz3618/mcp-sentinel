@@ -31,6 +31,27 @@ class TimeoutConfig(BaseModel):
         ge=0,
         description="Wait time for local SSE server startup in seconds.",
     )
+    startup: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Overall per-backend connection timeout in seconds "
+            "(covers subprocess spawn + MCP init). "
+            "Useful for cold-start scenarios where uvx/npx downloads packages."
+        ),
+    )
+    retries: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=10,
+        description="Number of automatic retries for failed backend connections.",
+    )
+    retry_delay: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=120,
+        description="Seconds to wait between retry attempts.",
+    )
 
 
 class CapabilityFilterConfig(BaseModel):

@@ -27,7 +27,7 @@ from textual.widgets import (
     TextArea,
 )
 
-from mcp_sentinel.constants import AUTHOR, SERVER_NAME, SERVER_VERSION
+from mcp_sentinel.constants import SERVER_NAME, SERVER_VERSION
 from mcp_sentinel.tui.screens.base import SentinelScreen
 
 # Lazy-import heavy widget panels only when needed (avoids circular imports)
@@ -250,7 +250,7 @@ class SettingsScreen(SentinelScreen):
             with TabPane("About", id="tab-about"):
                 with Vertical(id="about-section"):
                     yield Static(
-                        f"[b]{SERVER_NAME}[/b] v{SERVER_VERSION}  •  by {AUTHOR}",
+                        f"[b]{SERVER_NAME}[/b] v{SERVER_VERSION}",
                         id="about-title",
                     )
                     yield Static("", id="about-details")

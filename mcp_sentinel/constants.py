@@ -1,8 +1,7 @@
 """Shared constants for MCP Sentinel."""
 
 SERVER_NAME = "MCP Sentinel"
-SERVER_VERSION = "0.1.0"
-AUTHOR = "diaz3618"
+SERVER_VERSION = "0.5.0"
 
 # Network defaults
 DEFAULT_HOST = "127.0.0.1"
@@ -27,3 +26,8 @@ DEFAULT_LOG_LEVEL = "INFO"
 SSE_LOCAL_START_DELAY = 5  # seconds to wait for local SSE server startup
 MCP_INIT_TIMEOUT = 15  # seconds for MCP session initialization
 CAP_FETCH_TIMEOUT = 10.0  # seconds for capability list fetch
+STARTUP_TIMEOUT = 120  # overall per-backend connection timeout (spawn + init)
+
+# Backend retry defaults
+BACKEND_RETRIES = 1  # number of automatic retries for failed backends
+BACKEND_RETRY_DELAY = 5.0  # seconds to wait between retries
