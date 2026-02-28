@@ -44,7 +44,7 @@ FROM python:3.13-slim AS runtime
 
 LABEL org.opencontainers.image.title="MCP Sentinel" \
       org.opencontainers.image.description="Central aggregation server for MCP (Model Context Protocol) backends" \
-      org.opencontainers.image.source="https://github.com/diaz3618/MCP-Gateway" \
+      org.opencontainers.image.source="https://github.com/diaz3618/mcp-sentinel" \
       org.opencontainers.image.licenses="GPL-3.0-only"
 
 # Install Node.js LTS (for npx-based MCP backend servers)
