@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Label, Select, Static
 from textual.widget import Widget
+from textual.widgets import Button, DataTable, Input, Label, Select, Static
 
 logger = logging.getLogger(__name__)
 

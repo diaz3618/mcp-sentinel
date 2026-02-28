@@ -11,10 +11,9 @@ If no token is configured, authentication is **disabled** and all requests pass.
 import hmac
 import logging
 import os
-from typing import Any, Callable, Optional
+from typing import Optional
 
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
@@ -52,7 +51,7 @@ class BearerAuthMiddleware:
 
     Usage::
 
-        middleware = BearerAuthMiddleware(app, token="my-secret")
+        middleware = BearerAuthMiddleware(app, token="<your-token>")
     """
 
     def __init__(self, app: ASGIApp, token: Optional[str] = None) -> None:

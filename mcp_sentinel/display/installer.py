@@ -22,11 +22,9 @@ from rich.progress import (
     ProgressColumn,
     SpinnerColumn,
     Task,
-    TextColumn,
     TimeElapsedColumn,
 )
 from rich.text import Text
-
 
 # ── Phase enum (display-side, decoupled from runtime) ────────────────────
 

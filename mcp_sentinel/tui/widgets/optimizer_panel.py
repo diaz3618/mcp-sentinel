@@ -7,12 +7,12 @@ including token reduction metrics and a test search interface.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, DataTable, Input, Label, ProgressBar, Static
 from textual.widget import Widget
+from textual.widgets import Button, DataTable, Input, Label, ProgressBar, Static
 
 logger = logging.getLogger(__name__)
 

@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.widgets import DataTable, Label, Static, Tree
 from textual.widget import Widget
+from textual.widgets import Label, Tree
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +81,6 @@ class ServerGroupsWidget(Widget):
             backend_map = {b.get("name"): b for b in backends}
 
             for group_name, members in sorted(groups.items()):
-                healthy = sum(
-                    1 for m in members
-                    if backend_map.get(m, {}).get("phase", "").lower() == "ready"
-                )
                 total = len(members)
 
                 group_label = f"{group_name} ({total})"

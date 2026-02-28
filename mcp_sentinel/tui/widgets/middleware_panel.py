@@ -11,8 +11,8 @@ from typing import Any, Dict, List
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.widgets import DataTable, Label, Static
 from textual.widget import Widget
+from textual.widgets import DataTable, Label, Static
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class MiddlewarePipelineWidget(Widget):
 
                 table.add_row(str(i), name, status_display, note if not always_on else "")
 
-            custom = sum(1 for l in layers if l.get("custom", False))
+            custom = sum(1 for layer in layers if layer.get("custom", False))
             summary = f"Active: {active}/{total} │ Custom middleware: {custom}"
             self.query_one("#mw-summary", Static).update(summary)
         except Exception:

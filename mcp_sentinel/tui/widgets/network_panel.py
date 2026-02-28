@@ -7,12 +7,12 @@ and network mode picker for sandboxed MCP server execution.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, Input, Label, Select, Static, TextArea
 from textual.widget import Widget
+from textual.widgets import Input, Label, Select, TextArea
 
 logger = logging.getLogger(__name__)
 

@@ -49,9 +49,11 @@ DEFAULT_ENABLED: List[str] = [
     "atom-one-dark",
 ]
 
-_SETTINGS_DIR = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "mcp-sentinel",
+_SETTINGS_DIR = os.path.realpath(
+    os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        "mcp-sentinel",
+    )
 )
 _SETTINGS_FILE = os.path.join(_SETTINGS_DIR, "settings.json")
 

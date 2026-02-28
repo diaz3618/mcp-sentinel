@@ -184,7 +184,6 @@ class ClientConfigModal(ModalScreen[Optional[str]]):
             return
         client = self._detected[self._selected_index]
         path = client["expanded_path"]
-        snippet = self._generate_config(client)
 
         try:
             existing = {}

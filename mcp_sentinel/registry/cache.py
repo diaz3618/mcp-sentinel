@@ -6,10 +6,12 @@ or when the registry is temporarily unreachable.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from mcp_sentinel.registry.models import ServerEntry
@@ -98,9 +100,13 @@ class RegistryCache:
     # ── internals ───────────────────────────────────────────────────
 
     def _path_for(self, registry_url: str) -> str:
-        safe = registry_url.replace("://", "_").replace("/", "_").replace(":", "_")
-        safe = safe[:120]  # limit filename length
-        return os.path.join(self._cache_dir, f"{safe}.json")
+        # Use SHA-256 hash to eliminate injection, length, and encoding issues
+        safe_name = hashlib.sha256(registry_url.encode()).hexdigest()
+        base_dir = Path(self._cache_dir).resolve()
+        target_path = (base_dir / f"{safe_name}.json").resolve()
+        if not target_path.is_relative_to(base_dir):
+            raise ValueError("Cache path escapes cache directory")
+        return str(target_path)
 
     def _read(self, path: str) -> Optional[Dict[str, Any]]:
         if not os.path.exists(path):
