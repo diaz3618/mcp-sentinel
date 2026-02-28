@@ -1,20 +1,230 @@
-# This config correctly separates ruleset imports from individual custom rules.
-# This allows you to mix "auto" community rules with your project-specific ones.
-
-# --- Standard Community Rulesets (The "Auto" part) ---
-extends:
-  - p/python
-  - p/dockerfile
-  - p/security-audit
-  - p/secrets
-
-# --- Custom Research-Backed Rules ---
+# Local deterministic Semgrep rules for MCP Sentinel.
+#
+# This file intentionally contains only project-specific custom rules.
+# To combine tested Semgrep registry packs with these rules, run:
+#   semgrep scan --config p/python --config p/dockerfile --config p/security-audit --config p/secrets --config .semgrep.yml
 rules:
+  - id: agent-runtime-subprocess-shell-true
+    patterns:
+      - pattern: subprocess.$FUNC(..., shell=$TRUE, ...)
+      - metavariable-pattern:
+          metavariable: $TRUE
+          pattern: |
+            True
+      - pattern-not: subprocess.$FUNC("...", shell=True, ...)
+      - focus-metavariable: $TRUE
+    message: >
+      Found `subprocess.$FUNC(..., shell=True, ...)`. In agent/tooling contexts this
+      expands command-injection blast radius. Prefer argument arrays and `shell=False`.
+    fix: |
+      False
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: security
+      technology: [python, agent-runtime]
+      source_rule_id: subprocess-shell-true
+      source_rule_path: python/lang/security/audit/subprocess-shell-true.yaml
+      references:
+        - https://docs.python.org/3/library/subprocess.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html
+
+  - id: agent-runtime-eval-detected
+    patterns:
+      - pattern-not: eval(f"")
+      - pattern-not: eval("...")
+      - pattern: eval(...)
+    message: >
+      Detected `eval(...)`. Dynamic code execution in agent-adjacent runtime code is
+      high-risk unless fully sandboxed and allowlisted.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: security
+      technology: [python, agent-runtime]
+      source_rule_id: eval-detected
+      source_rule_path: python/lang/security/audit/eval-detected.yaml
+      references:
+        - https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b307-eval
+        - https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html
+
+  - id: agent-runtime-exec-detected
+    patterns:
+      - pattern-not: exec("...")
+      - pattern: exec(...)
+    message: >
+      Detected `exec(...)`. This is dangerous in infrastructure/tooling code and
+      should be replaced with deterministic dispatch.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: security
+      technology: [python, agent-runtime]
+      source_rule_id: exec-detected
+      source_rule_path: python/lang/security/audit/exec-detected.yaml
+      references:
+        - https://bandit.readthedocs.io/en/latest/plugins/b102_exec_used.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html
+
+  - id: agent-runtime-avoid-unsafe-yaml-load
+    patterns:
+      - pattern-inside: |
+          import yaml
+          ...
+      - pattern-not-inside: |
+          $YAML = ruamel.yaml.YAML(...)
+          ...
+      - pattern-either:
+          - pattern: yaml.unsafe_load(...)
+          - pattern: yaml.load(..., Loader=yaml.Loader, ...)
+          - pattern: yaml.load(..., Loader=yaml.UnsafeLoader, ...)
+          - pattern: yaml.load(..., Loader=yaml.CLoader, ...)
+          - pattern: yaml.load_all(..., Loader=yaml.Loader, ...)
+          - pattern: yaml.load_all(..., Loader=yaml.UnsafeLoader, ...)
+          - pattern: yaml.load_all(..., Loader=yaml.CLoader, ...)
+    message: >
+      Unsafe YAML deserialization detected (`yaml.load` with unsafe loaders or
+      `yaml.unsafe_load`). Use `yaml.safe_load`/`SafeLoader` for untrusted input.
+    fix-regex:
+      regex: unsafe_load
+      replacement: safe_load
+      count: 1
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: security
+      technology: [python, pyyaml]
+      source_rule_id: avoid-pyyaml-load
+      source_rule_path: python/lang/security/deserialization/avoid-pyyaml-load.yaml
+      references:
+        - https://github.com/yaml/pyyaml/wiki/PyYAML-yaml.load(input)-Deprecation
+        - https://nvd.nist.gov/vuln/detail/CVE-2017-18342
+
+  - id: agent-runtime-avoid-pickle-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.$FUNC(...)
+          - pattern: _pickle.$FUNC(...)
+          - pattern: cPickle.$FUNC(...)
+          - pattern: dill.$FUNC(...)
+      - pattern-not: pickle.$FUNC("...")
+      - pattern-not: _pickle.$FUNC("...")
+      - pattern-not: cPickle.$FUNC("...")
+      - pattern-not: dill.$FUNC("...")
+    message: >
+      Pickle-like deserialization detected. In agent/runtime code this can enable
+      arbitrary code execution when input trust is weak. Prefer JSON or structured formats.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: security
+      technology: [python, deserialization]
+      source_rule_id: avoid-pickle
+      source_rule_path: python/lang/security/deserialization/pickle.yaml
+      references:
+        - https://docs.python.org/3/library/pickle.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+  - id: architecture-server-layer-no-tui-import
+    message: >
+      Server/bridge/runtime/config layers must not import TUI modules.
+      The architecture docs define TUI as a separate client over HTTP management APIs.
+      Move shared contracts to neutral modules instead of importing `mcp_sentinel.tui.*`.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /mcp_sentinel/server/**/*.py
+        - /mcp_sentinel/bridge/**/*.py
+        - /mcp_sentinel/runtime/**/*.py
+        - /mcp_sentinel/config/**/*.py
+        - /mcp_sentinel/registry/**/*.py
+        - /mcp_sentinel/secrets/**/*.py
+        - /mcp_sentinel/audit/**/*.py
+        - /mcp_sentinel/workflows/**/*.py
+    pattern-either:
+      - pattern: import mcp_sentinel.tui
+      - pattern: import mcp_sentinel.tui.$MOD
+      - pattern: from mcp_sentinel.tui import $X
+      - pattern: from mcp_sentinel.tui.$MOD import $X
+    metadata:
+      category: architecture
+      technology: [python, mcp-sentinel]
+      references:
+        - docs/architecture/00-overview.md
+        - docs/architecture/01-server.md
+        - docs/tui/README.md
+
+  - id: architecture-tui-no-server-auth-internals
+    message: >
+      TUI should not import low-level server auth/authz/session internals.
+      TUI must interact through management API contracts rather than security internals.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/tui/**/*.py
+    pattern-either:
+      - pattern: import mcp_sentinel.server.auth
+      - pattern: import mcp_sentinel.server.auth.$MOD
+      - pattern: from mcp_sentinel.server.auth import $X
+      - pattern: from mcp_sentinel.server.auth.$MOD import $X
+      - pattern: import mcp_sentinel.server.authz
+      - pattern: import mcp_sentinel.server.authz.$MOD
+      - pattern: from mcp_sentinel.server.authz import $X
+      - pattern: from mcp_sentinel.server.authz.$MOD import $X
+      - pattern: import mcp_sentinel.server.session
+      - pattern: import mcp_sentinel.server.session.$MOD
+      - pattern: from mcp_sentinel.server.session import $X
+      - pattern: from mcp_sentinel.server.session.$MOD import $X
+    metadata:
+      category: architecture
+      technology: [python, mcp-sentinel]
+      references:
+        - docs/architecture/00-overview.md
+        - docs/security/README.md
+        - docs/tui/README.md
+
+  - id: architecture-no-legacy-forwarder-import
+    message: >
+      Avoid new imports of legacy `bridge.forwarder` outside bridge internals.
+      Request routing should go through middleware routing and capability registry paths.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/server/**/*.py
+        - /mcp_sentinel/runtime/**/*.py
+        - /mcp_sentinel/tui/**/*.py
+    pattern-either:
+      - pattern: import mcp_sentinel.bridge.forwarder
+      - pattern: from mcp_sentinel.bridge.forwarder import $X
+    metadata:
+      category: architecture
+      technology: [python, mcp-sentinel]
+      references:
+        - docs/architecture/02-bridge.md
+        - docs/middleware.md
   - id: asyncio-dangling-task
     message: >
       A task was created but its reference was not stored.
       According to the official Python docs, the event loop only keeps weak references to tasks.
       If a task is not stored in a strong reference, it may be garbage collected mid-execution.
+      Pattern: `asyncio.create_task(...)` must be assigned to a variable or added to a set.
     languages: [python]
     severity: ERROR
     patterns:
@@ -29,6 +239,7 @@ rules:
     message: >
       A synchronous blocking call (like `time.sleep`, `requests.*`, or `subprocess.run`) was detected inside an `async def`.
       Asyncio is single-threaded; blocking the event loop stops all other concurrent tasks.
+      Use `await asyncio.sleep()`, `httpx.AsyncClient`, or `run_in_executor`.
     languages: [python]
     severity: ERROR
     patterns:
@@ -41,6 +252,294 @@ rules:
           - pattern: subprocess.run(...)
           - pattern: subprocess.call(...)
 
+  - id: asyncio-unawaited-coroutine
+    message: >
+      A coroutine was called but not awaited. This results in the coroutine never being executed.
+      Always use `await` or `asyncio.create_task()`.
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern: $FUNC(...)
+      - pattern-not-inside: await $FUNC(...)
+      - pattern-not-inside: asyncio.create_task($FUNC(...))
+      - pattern-not-inside: asyncio.run($FUNC(...))
+      - pattern-not-inside: loop.create_task($FUNC(...))
+      - pattern-not-inside: return $FUNC(...)
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: ^(async_.*|.*_async|.*_coro)$
+    metadata:
+      note: "This rule uses naming conventions (async_ prefix or _async suffix) to identify probable coroutines."
+  - id: code-quality-requests-timeout-required
+    pattern-either:
+      - patterns:
+          - pattern-not: requests.$W(..., timeout=$N, ...)
+          - pattern-not: requests.$W(..., **$KWARGS)
+          - pattern-either:
+              - pattern: requests.request(...)
+              - pattern: requests.get(...)
+              - pattern: requests.post(...)
+              - pattern: requests.put(...)
+              - pattern: requests.delete(...)
+              - pattern: requests.head(...)
+              - pattern: requests.patch(...)
+      - patterns:
+          - pattern-inside: |
+              $SESSION = requests.Session(...)
+              ...
+          - pattern-not: |
+              $SESSION.$W(..., timeout=$N, ...)
+          - pattern-not: |
+              $SESSION.$W(..., **$KWARGS)
+          - pattern-either:
+              - pattern: $SESSION.get(...)
+              - pattern: $SESSION.post(...)
+              - pattern: $SESSION.put(...)
+              - pattern: $SESSION.delete(...)
+              - pattern: $SESSION.head(...)
+              - pattern: $SESSION.patch(...)
+    message: >
+      Requests call without explicit timeout. This creates reliability risk and hidden
+      hangs. Set timeout explicitly for network calls.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+        - /tests/**/*.py
+    metadata:
+      category: reliability
+      technology: [python, requests]
+      source_rule_id: use-timeout
+      source_rule_path: python/requests/best-practice/use-timeout.yaml
+      references:
+        - https://docs.python-requests.org/en/latest/user/advanced/#timeouts
+
+  - id: code-quality-logging-error-without-handling
+    patterns:
+      - pattern-inside: |
+          try:
+            ...
+          except ...:
+            ...
+          ...
+      - pattern-either:
+          - pattern: |
+              logger.$FUNC(...)
+              ...
+              raise
+          - pattern: |
+              logger.$FUNC(...)
+              ...
+              raise $EX
+          - pattern: |
+              logger.$FUNC(...)
+              ...
+              raise $EX from $EX2
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (error|exception)
+    message: >
+      Error logged and immediately re-raised. This can create duplicate noisy logs.
+      Prefer lower-level logging or handle the error at one layer only.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: maintainability
+      technology: [python, logging]
+      source_rule_id: logging-error-without-handling
+      source_rule_path: python/lang/best-practice/logging-error-without-handling.yaml
+
+  - id: code-quality-test-missing-assert
+    patterns:
+      - pattern: $A == $B
+      - pattern-not-inside: assert ...
+      - pattern-not-inside: $X = ...
+      - pattern-not-inside: $X += ...
+      - pattern-not-inside: $X |= ...
+      - pattern-not-inside: $X &= ...
+      - pattern-not-inside: yield $X
+      - pattern-not-inside: $X and $Y
+      - pattern-not-inside: $X or $Y
+      - pattern-not-inside: return ...
+      - pattern-not-inside: $FUNC(...)
+      - pattern-not-inside: |
+          while $EXPR:
+            ...
+      - pattern-not-inside: |
+          with (...):
+            ...
+      - pattern-not-inside: |
+          [...]
+      - pattern-not-inside: |
+          $EXPR[...]
+      - pattern-not-inside: |
+          if ...:
+              ...
+    message: >
+      Comparison in test without assertion. This usually means the test does not
+      actually validate behavior.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /tests/**/*.py
+        - /test*.py
+    metadata:
+      category: test-quality
+      technology: [python, pytest]
+      source_rule_id: test-is-missing-assert
+      source_rule_path: python/lang/correctness/test-is-missing-assert.yaml
+  - id: dependency-no-dynamic-import-module-names
+    patterns:
+      - pattern: |
+          importlib.import_module($NAME, ...)
+      - pattern-not: |
+          importlib.import_module("...", ...)
+    message: >
+      Dynamic module import detected. For dependency safety and hallucination mitigation,
+      prefer explicit allowlisted module names.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+    metadata:
+      category: dependency
+      technology: [python, importlib]
+      source_rule_id: non-literal-import
+      source_rule_path: python/lang/security/audit/non-literal-import.yaml
+      references:
+        - https://docs.python.org/3/library/importlib.html#importlib.import_module
+
+  - id: dependency-no-runtime-pip-install
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$FUNC("...pip install...", ...)
+          - pattern: subprocess.$FUNC(["...pip...", "...install...", ...], ...)
+          - pattern: os.system("...pip install...")
+      - pattern-not: subprocess.$FUNC("... pip install ...", shell=False, ...)
+    message: >
+      Runtime package installation detected. This is high risk for provenance and
+      reproducibility. Resolve dependencies at build time with lockfiles/pinned artifacts.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /mcp_sentinel/**/*.py
+        - /mods/**/*.py
+    metadata:
+      category: dependency
+      technology: [python, subprocess]
+      source_rule_family: subprocess-shell-true / dangerous-system-call
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/NPM_Security_Cheat_Sheet.html
+        - https://slsa.dev/
+
+  - id: dependency-docker-no-unpinned-pip-install
+    patterns:
+      - pattern: RUN ... pip install ...
+      - pattern-not: RUN ... pip install ... -r ...
+      - pattern-not: RUN ... pip install ... == ...
+      - pattern-not: RUN ... pip install ... --require-hashes ...
+    message: >
+      Dockerfile `pip install` appears unpinned. Prefer requirements files or pinned
+      versions/hashes to reduce supply-chain drift.
+    languages: [dockerfile]
+    severity: WARNING
+    metadata:
+      category: dependency
+      technology: [docker, pip]
+      source_rule_family: docker-pip-no-cache + supply-chain hardening
+      references:
+        - https://docs.docker.com/develop/develop-images/dockerfile_best-practices/
+        - https://cheatsheetseries.owasp.org/cheatsheets/NPM_Security_Cheat_Sheet.html
+  - id: docker-user-root
+    message: >
+      The Dockerfile does not specify a non-root USER.
+      Running containers as root is a major security risk (OWASP).
+      Create a system user and use `USER <username>` to drop privileges.
+    languages: [dockerfile]
+    severity: ERROR
+    patterns:
+      - pattern: FROM ...
+      - pattern-not: USER $USER
+
+  - id: docker-latest-tag
+    message: >
+      The Dockerfile uses the `:latest` tag for a base image.
+      This makes builds non-deterministic and can lead to unexpected breaking changes in production.
+      Use a specific version tag.
+    languages: [dockerfile]
+    severity: WARNING
+    pattern: FROM $IMAGE:latest
+
+  - id: docker-pip-no-cache
+    message: >
+      `pip install` is used without `--no-cache-dir`.
+      This increases image size by storing unnecessary cache files in the container layers.
+    languages: [dockerfile]
+    severity: WARNING
+    patterns:
+      - pattern: RUN ... pip install ...
+      - pattern-not: RUN ... pip install ... --no-cache-dir ...
+  - id: httpx-client-instantiation-loop
+    message: >
+      `httpx.AsyncClient` is instantiated inside a loop. This is a significant performance anti-pattern.
+      Each instantiation creates a new connection pool, negating the benefits of persistent connections and potentially exhausting file descriptors.
+      Initialize the client once and reuse it.
+    languages: [python]
+    severity: ERROR
+    pattern: |
+      for ... in ...:
+          ...
+          async with httpx.AsyncClient(...) as $CLIENT:
+              ...
+
+  - id: httpx-missing-timeout
+    message: >
+      `httpx.AsyncClient` should be initialized with an explicit `timeout`.
+      The default timeout is 5.0 seconds. For critical production services, you should explicitly define 
+      connect, read, and write timeouts to prevent hangs or premature failures.
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern: httpx.AsyncClient(...)
+      - pattern-not: httpx.AsyncClient(..., timeout=$T, ...)
+      - pattern-not: httpx.AsyncClient(..., **$KWARGS)
+  - id: insecure-hashing
+    message: >
+      Insecure hashing algorithm detected (MD5/SHA1).
+      These algorithms are cryptographically broken and should not be used for security purposes.
+      Use SHA256 or SHA512.
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+
+  - id: hardcoded-secrets
+    message: >
+      A potential hardcoded secret was detected.
+      Passwords, tokens, and API keys should never be stored in source code.
+      Use environment variables or a secret management service.
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern: $VAR = "$VAL"
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(password|secret|token|api_key|auth_key)
+      - metavariable-regex:
+          metavariable: $VAL
+          # Matches typical long hex or base64 strings that look like secrets
+          regex: ^[A-Za-z0-9+/]{32,}[=]{0,2}$
+    metadata:
+      note: "Matches variable names like 'password' or 'token' assigned to long, high-entropy strings."
   - id: starlette-basehttpmiddleware-pitfalls
     message: >
       `BaseHTTPMiddleware` has known performance overhead and issues with `ContextVars` propagation.
@@ -56,6 +555,7 @@ rules:
     message: >
       Using `request.url.path` in middleware can be misleading when the application is mounted under a prefix (e.g., `Mount("/api", app)`).
       `request.url.path` returns the full path including the prefix. 
+      For route-relative logic, consider `request.scope.get("root_path")` or checking the ASGI scope directly.
     languages: [python]
     severity: WARNING
     patterns:
@@ -65,11 +565,11 @@ rules:
               async def dispatch(self, $REQ, $CALL_NEXT):
                   ...
       - pattern: $REQ.url.path
-
   - id: textual-worker-exit-on-error
     message: >
       By default, Textual `@work` workers exit the entire application on an unhandled exception (`exit_on_error=True`).
-      For production applications, it is recommended to set `exit_on_error=False` to prevent the TUI from crashing unexpectedly.
+      For production applications, it is recommended to set `exit_on_error=False` and handle errors via `Worker.StateChanged` 
+      or `try/except` blocks to prevent the TUI from crashing unexpectedly.
     languages: [python]
     severity: WARNING
     patterns:
@@ -80,6 +580,7 @@ rules:
     message: >
       A Textual worker contains an `except Exception:` block that does not notify the UI.
       In terminal applications, background failures are invisible to the user unless explicitly reported.
+      Always use `self.notify()` or `self.post_message()` in exception handlers within workers.
     languages: [python]
     severity: WARNING
     patterns:
@@ -92,39 +593,27 @@ rules:
               ...
           except Exception:
               ...
-      - pattern-not-inside: |
+      - pattern-not: |
+          try:
+              ...
           except Exception:
               ...
               self.notify(...)
-      - pattern-not-inside: |
+      - pattern-not: |
+          try:
+              ...
           except Exception:
               ...
               self.app.notify(...)
-      - pattern-not-inside: |
+      - pattern-not: |
+          try:
+              ...
           except Exception:
               ...
               self.post_message(...)
-      - pattern-not-inside: |
+      - pattern-not: |
+          try:
+              ...
           except Exception:
               ...
               raise
-
-  - id: docker-user-root
-    message: >
-      The Dockerfile does not specify a non-root USER.
-      Running containers as root is a major security risk (OWASP).
-    languages: [dockerfile]
-    severity: ERROR
-    patterns:
-      - pattern: FROM ...
-      - pattern-not: USER $USER
-
-  - id: docker-pip-no-cache
-    message: >
-      `pip install` is used without `--no-cache-dir`.
-      This increases image size by storing unnecessary cache files in the container layers.
-    languages: [dockerfile]
-    severity: WARNING
-    patterns:
-      - pattern: RUN ... pip install ...
-      - pattern-not: RUN ... pip install ... --no-cache-dir ...

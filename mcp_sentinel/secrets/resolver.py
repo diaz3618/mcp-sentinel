@@ -103,6 +103,7 @@ def _resolve_string(
     except Exception:
         pass  # logging may not be configured yet
 
+    # nosemgrep: python-logger-credential-disclosure (logs secret name, not value)
     logger.debug("Resolved secret '%s' at %s", secret_name, path)
     return resolved
 

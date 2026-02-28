@@ -187,7 +187,7 @@ class _StatusSpinnerColumn(ProgressColumn):
         spinner_text = self._spinner.render(task)
         style_str: str = fields.get("spinner_style", "bold white")
         result = Text("  ", style=style_str)
-        result.append(spinner_text)
+        result.append(str(spinner_text))
         return result
 
 

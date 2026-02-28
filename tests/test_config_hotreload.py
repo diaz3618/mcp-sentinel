@@ -5,15 +5,11 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
-import time
 from typing import Any, Dict
 from unittest.mock import AsyncMock
 
-import pytest
-
 from mcp_sentinel.config.diff import ConfigDiff, compute_diff, configs_differ
 from mcp_sentinel.config.watcher import ConfigWatcher
-
 
 # ── ConfigDiff tests ────────────────────────────────────────────────────
 

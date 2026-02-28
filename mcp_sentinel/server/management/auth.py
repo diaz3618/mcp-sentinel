@@ -35,6 +35,7 @@ def resolve_token() -> Optional[str]:
     # 1. Environment variable (highest priority)
     env_token = os.environ.get(MGMT_TOKEN_ENV_VAR, "").strip()
     if env_token:
+        # nosemgrep: python-logger-credential-disclosure (logs env var name, not token)
         logger.debug("Management API token resolved from %s env var.", MGMT_TOKEN_ENV_VAR)
         return env_token
 

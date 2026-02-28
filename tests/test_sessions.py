@@ -1,11 +1,6 @@
 """Tests for the named session management module."""
 
-import json
 import os
-import signal
-import subprocess
-import sys
-import time
 from unittest import mock
 
 import pytest
@@ -20,10 +15,8 @@ from mcp_sentinel.sessions import (
     remove_session,
     save_session,
     session_path,
-    stop_session,
     validate_name,
 )
-
 
 # ── validate_name ─────────────────────────────────────────────────────
 

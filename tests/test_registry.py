@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import os
 import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp_sentinel.registry.models import ServerEntry, ServerPage, ToolDefinition
 from mcp_sentinel.registry.cache import RegistryCache
-
+from mcp_sentinel.registry.models import ServerEntry, ServerPage, ToolDefinition
 
 # ── Models ───────────────────────────────────────────────────────────────
 

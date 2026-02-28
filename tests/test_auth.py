@@ -4,20 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
-from mcp_sentinel.bridge.auth.token_cache import TokenCache
 from mcp_sentinel.bridge.auth.provider import (
-    AuthProvider,
     OAuth2Provider,
     StaticTokenProvider,
     _redact,
     create_auth_provider,
 )
-
+from mcp_sentinel.bridge.auth.token_cache import TokenCache
 
 # ── TokenCache tests ────────────────────────────────────────────────────
 

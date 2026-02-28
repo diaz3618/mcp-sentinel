@@ -215,7 +215,7 @@ class SentinelService:
                     if backend.tool_overrides:
                         rename_maps[name] = RenameMap(
                             overrides={
-                                k: {"name": v.name, "description": v.description}
+                                k: {"name": v.name or "", "description": v.description or ""}
                                 for k, v in backend.tool_overrides.items()
                             }
                         )

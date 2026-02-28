@@ -122,7 +122,7 @@ class FileProvider(SecretProvider):
         try:
             with open(self._path, "rb") as f:
                 encrypted = f.read()
-            decrypted = fernet.decrypt(encrypted)  # type: ignore[union-attr]
+            decrypted = fernet.decrypt(encrypted)  # type: ignore[attr-defined]
             return json.loads(decrypted)
         except Exception as exc:
             raise RuntimeError(
@@ -133,7 +133,7 @@ class FileProvider(SecretProvider):
     def _save(self, data: Dict[str, str]) -> None:
         fernet = self._ensure_fernet()
         plaintext = json.dumps(data).encode()
-        encrypted = fernet.encrypt(plaintext)  # type: ignore[union-attr]
+        encrypted = fernet.encrypt(plaintext)  # type: ignore[attr-defined]
         # Atomic write: write to temp file then rename
         import tempfile
 
@@ -189,7 +189,7 @@ class KeyringProvider(SecretProvider):
         if self._keyring is not None:
             return self._keyring
         try:
-            import keyring  # type: ignore[import-untyped]
+            import keyring
 
             self._keyring = keyring
             return keyring
@@ -200,29 +200,29 @@ class KeyringProvider(SecretProvider):
 
     def get(self, name: str) -> Optional[str]:
         kr = self._ensure_keyring()
-        return kr.get_password(self.SERVICE_NAME, name)  # type: ignore[union-attr]
+        return kr.get_password(self.SERVICE_NAME, name)  # type: ignore[attr-defined]
 
     def set(self, name: str, value: str) -> None:
         kr = self._ensure_keyring()
-        kr.set_password(self.SERVICE_NAME, name, value)  # type: ignore[union-attr]
+        kr.set_password(self.SERVICE_NAME, name, value)  # type: ignore[attr-defined]
         # Track names in a separate entry
         names = set(self.list_names())
         names.add(name)
-        kr.set_password(self.SERVICE_NAME, self._names_key, json.dumps(sorted(names)))  # type: ignore[union-attr]
+        kr.set_password(self.SERVICE_NAME, self._names_key, json.dumps(sorted(names)))  # type: ignore[attr-defined]
 
     def delete(self, name: str) -> None:
         kr = self._ensure_keyring()
         try:
-            kr.delete_password(self.SERVICE_NAME, name)  # type: ignore[union-attr]
+            kr.delete_password(self.SERVICE_NAME, name)  # type: ignore[attr-defined]
         except Exception:
             pass
         names = set(self.list_names())
         names.discard(name)
-        kr.set_password(self.SERVICE_NAME, self._names_key, json.dumps(sorted(names)))  # type: ignore[union-attr]
+        kr.set_password(self.SERVICE_NAME, self._names_key, json.dumps(sorted(names)))  # type: ignore[attr-defined]
 
     def list_names(self) -> List[str]:
         kr = self._ensure_keyring()
-        raw = kr.get_password(self.SERVICE_NAME, self._names_key)  # type: ignore[union-attr]
+        raw = kr.get_password(self.SERVICE_NAME, self._names_key)  # type: ignore[attr-defined]
         if raw:
             try:
                 return json.loads(raw)

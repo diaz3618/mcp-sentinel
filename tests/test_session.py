@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from time import monotonic
 
 import pytest
 
-from mcp_sentinel.server.session.models import MCPSession
 from mcp_sentinel.server.session.manager import SessionManager
-
+from mcp_sentinel.server.session.models import MCPSession
 
 # ════════════════════════════════════════════════════════════════════════
 #  MCPSession model tests

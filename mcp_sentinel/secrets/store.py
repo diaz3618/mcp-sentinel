@@ -40,11 +40,13 @@ class SecretStore:
     def set(self, name: str, value: str) -> None:
         """Store or update a secret."""
         self._provider.set(name, value)
+        # nosemgrep: python-logger-credential-disclosure (logs name, not value)
         logger.debug("Secret '%s' stored via %s provider", name, self._provider_type)
 
     def delete(self, name: str) -> None:
         """Delete a secret."""
         self._provider.delete(name)
+        # nosemgrep: python-logger-credential-disclosure (logs name, not value)
         logger.debug("Secret '%s' deleted via %s provider", name, self._provider_type)
 
     def list_names(self) -> List[str]:

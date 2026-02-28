@@ -18,6 +18,7 @@
 # ──────────────────────────────────────────────────────────────
 
 # ── Stage 1: Builder ────────────────────────────────────────
+# nosemgrep: docker-user-root (builder stage is discarded; runtime uses USER sentinel)
 FROM python:3.13-slim AS builder
 
 # Install uv for fast dependency resolution
@@ -30,12 +31,14 @@ COPY pyproject.toml ./
 COPY mcp_sentinel/ ./mcp_sentinel/
 
 # Install the package and all runtime dependencies into a virtual env
-RUN uv venv /opt/venv && \
-    UV_LINK_MODE=copy uv pip install --python /opt/venv/bin/python . && \
+# nosemgrep: docker-pip-no-cache (uv uses --no-cache, not --no-cache-dir)
+RUN uv venv /opt/venv && \ # nosemgrep: dependency-docker-no-unpinned-pip-install
+    UV_LINK_MODE=copy uv pip install --no-cache --python /opt/venv/bin/python . && \
     find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 
 # ── Stage 2: Runtime ───────────────────────────────────────
+# nosemgrep: docker-user-root (USER sentinel set below at line ~80)
 FROM python:3.13-slim AS runtime
 
 LABEL org.opencontainers.image.title="MCP Sentinel" \

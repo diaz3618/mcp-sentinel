@@ -88,9 +88,11 @@ async def forward_request(
     try:
         target_method_on_session = getattr(session, mcp_method)
     except AttributeError:
-        logger.exception(
+        # nosemgrep: code-quality-logging-error-without-handling
+        logger.debug(
             "Internal programming error: method '%s' " "not found on ClientSession.",
             mcp_method,
+            exc_info=True,
         )
         raise NotImplementedError(
             f"Internal server error: forward method '{mcp_method}' not found."
@@ -112,7 +114,7 @@ async def forward_request(
         elif mcp_method == "get_prompt":
             result = await target_method_on_session(name=orig_cap_name, arguments=args)
         else:
-            logger.error(
+            logger.error(  # nosemgrep: code-quality-logging-error-without-handling
                 "Internal programming error: unknown forwarding method " "'%s'.",
                 mcp_method,
             )
@@ -129,7 +131,7 @@ async def forward_request(
         return result
 
     except asyncio.TimeoutError:
-        logger.error(
+        logger.debug(
             "Timeout communicating with backend '%s' " "(capability: '%s', method: '%s').",
             svr_name,
             cap_name_full,
@@ -137,7 +139,7 @@ async def forward_request(
         )
         raise
     except (ConnectionError, BrokenPipeError) as conn_e:
-        logger.error(
+        logger.debug(
             "Connection lost to backend '%s' " "(capability: '%s', method: '%s'): %s",
             svr_name,
             cap_name_full,
@@ -146,14 +148,15 @@ async def forward_request(
         )
         raise
     except BackendServerError:
-        logger.warning(
+        logger.debug(
             "Backend '%s' reported a server error " "while handling '%s'.",
             svr_name,
             cap_name_full,
         )
         raise
     except Exception as e_fwd:
-        logger.exception(
+        # (final catch-all — wraps unknown errors into BackendServerError)
+        logger.exception(  # nosemgrep: code-quality-logging-error-without-handling
             "Unexpected error forwarding request to backend '%s' "
             "(capability: '%s', method: '%s')",
             svr_name,
