@@ -32,7 +32,8 @@ COPY mcp_sentinel/ ./mcp_sentinel/
 
 # Install the package and all runtime dependencies into a virtual env
 # nosemgrep: docker-pip-no-cache (uv uses --no-cache, not --no-cache-dir)
-RUN uv venv /opt/venv && \ # nosemgrep: dependency-docker-no-unpinned-pip-install
+# nosemgrep: dependency-docker-no-unpinned-pip-install
+RUN uv venv /opt/venv && \
     UV_LINK_MODE=copy uv pip install --no-cache --python /opt/venv/bin/python . && \
     find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 

@@ -26,6 +26,8 @@ The project has a **server/client architecture**:
 
 Requires Python 3.10+. Using `uv` for environment management is recommended.
 
+Alternatively, run with **Docker** — see the [Docker usage guide](docs/docker.md).
+
 1. **Clone Repository**
 
     ```bash
