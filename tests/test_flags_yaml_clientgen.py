@@ -86,9 +86,7 @@ class TestReadConfigFile:
         from mcp_sentinel.config.loader import _read_config_file
 
         content = "version: v1\nbackends:\n  test:\n    type: stdio\n    command: echo\n"
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(content)
             f.flush()
             path = f.name
@@ -105,9 +103,7 @@ class TestReadConfigFile:
         from mcp_sentinel.config.loader import _read_config_file
 
         content = "version: v1\nbackends: {}\n"
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(content)
             f.flush()
             path = f.name
@@ -123,9 +119,7 @@ class TestReadConfigFile:
         from mcp_sentinel.config.loader import _read_config_file
         from mcp_sentinel.errors import ConfigurationError
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("{}")
             f.flush()
             path = f.name
@@ -141,9 +135,7 @@ class TestReadConfigFile:
         from mcp_sentinel.config.loader import _read_config_file
         from mcp_sentinel.errors import ConfigurationError
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("- 1\n- 2\n- 3\n")
             f.flush()
             path = f.name
@@ -173,9 +165,7 @@ class TestClientConfigGenerator:
     def test_claude_desktop_streamable_http(self):
         from mcp_sentinel.config.client_gen import generate_client_config
 
-        result = json.loads(
-            generate_client_config("claude-desktop", transport="streamable-http")
-        )
+        result = json.loads(generate_client_config("claude-desktop", transport="streamable-http"))
         server = result["mcpServers"]["mcp-sentinel"]
         assert server["url"] == "http://127.0.0.1:9000/mcp"
         assert server["transport"] == "streamable-http"
@@ -205,16 +195,12 @@ class TestClientConfigGenerator:
     def test_custom_host_port(self):
         from mcp_sentinel.config.client_gen import generate_client_config
 
-        result = json.loads(
-            generate_client_config("claude-desktop", host="0.0.0.0", port=8080)
-        )
+        result = json.loads(generate_client_config("claude-desktop", host="0.0.0.0", port=8080))
         server = result["mcpServers"]["mcp-sentinel"]
         assert "0.0.0.0:8080" in server["url"]
 
     def test_custom_server_name(self):
         from mcp_sentinel.config.client_gen import generate_client_config
 
-        result = json.loads(
-            generate_client_config("claude-desktop", server_name="my-proxy")
-        )
+        result = json.loads(generate_client_config("claude-desktop", server_name="my-proxy"))
         assert "my-proxy" in result["mcpServers"]

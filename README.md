@@ -63,7 +63,7 @@ mcp-sentinel --help
 ```text
 usage: mcp-sentinel [-h] {server,tui,secret} ...
 
-MCP Sentinel v0.1.0
+MCP Sentinel v0.5.0
 
 positional arguments:
   {server,tui,secret}

@@ -96,6 +96,19 @@ optimizer:
   enabled: false                    # replaces full tool list with find_tool + call_tool
   keep_tools: []                    # tools always exposed alongside meta-tools
 
+# ── Telemetry (OpenTelemetry) ────────────────────────────────────────────
+telemetry:
+  enabled: false                    # enable OTel tracing and metrics
+  otlp_endpoint: "http://localhost:4317"  # OTLP collector endpoint
+  service_name: "mcp-sentinel"      # service name in traces
+
+# ── Secrets Management ───────────────────────────────────────────────────
+secrets:
+  enabled: false                    # enable automatic secret resolution
+  provider: env                     # "env", "file", or "keyring"
+  path: ""                          # path for file provider (ignored otherwise)
+  strict: false                     # error if secret cannot be resolved
+
 # ── Registries ───────────────────────────────────────────────────────────
 # External catalogs of MCP servers for the TUI Registry browser.
 # Configure at least one to use the Registry feature (browse & install).

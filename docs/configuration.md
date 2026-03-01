@@ -25,12 +25,16 @@ Sentinel searches for config files in this order:
 version: "1"                    # Config format version (required)
 
 server: { ... }                 # Server settings
+client: { ... }                 # TUI / client settings
 backends: { ... }               # Backend MCP server definitions
 conflict_resolution: { ... }    # Capability conflict strategy
 audit: { ... }                  # Audit logging
 optimizer: { ... }              # Tool optimizer (meta-tools)
+telemetry: { ... }              # OpenTelemetry integration
+secrets: { ... }                # Encrypted secret management
+registries: [ ... ]             # External MCP server catalogs
 incoming_auth: { ... }          # Incoming client authentication
-authorization: { ... }         # RBAC policies
+authorization: { ... }          # RBAC policies
 feature_flags: { ... }          # Feature toggles
 ```
 
@@ -314,6 +318,54 @@ optimizer:
 When enabled, clients see only `find_tool`, `call_tool`, and any `keep_tools`.
 The LLM uses `find_tool` to search the tool index, then `call_tool` to invoke
 the selected tool.
+
+---
+
+## `telemetry`
+
+OpenTelemetry integration for distributed tracing and metrics.
+
+```yaml
+telemetry:
+  enabled: false
+  otlp_endpoint: "http://localhost:4317"
+  service_name: "mcp-sentinel"
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable OpenTelemetry tracing and metrics |
+| `otlp_endpoint` | string | `"http://localhost:4317"` | OTLP collector endpoint (gRPC or HTTP) |
+| `service_name` | string | `"mcp-sentinel"` | Service name reported to the collector |
+
+When enabled, a `TelemetryMiddleware` is inserted into the middleware chain
+and spans are exported to the configured OTLP endpoint. Requires the
+`opentelemetry-*` packages to be installed.
+
+---
+
+## `secrets`
+
+Automatic secret resolution for config values.
+
+```yaml
+secrets:
+  enabled: false
+  provider: "env"
+  path: ""
+  strict: false
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable automatic secret resolution |
+| `provider` | string | `"env"` | Provider type: `"env"`, `"file"`, or `"keyring"` |
+| `path` | string | `""` | Path for the file provider (ignored for other providers) |
+| `strict` | boolean | `false` | Raise an error if a referenced secret cannot be resolved |
+
+When enabled, `secret:<name>` references in config values are resolved
+before Pydantic validation. See [Secrets Management](security/secrets.md)
+for provider details.
 
 ---
 

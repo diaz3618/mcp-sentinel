@@ -220,7 +220,11 @@ class TestRegistryClient:
 
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
-        mock_resp.json.return_value = {"name": "my-server", "transport": "stdio", "command": "python"}
+        mock_resp.json.return_value = {
+            "name": "my-server",
+            "transport": "stdio",
+            "command": "python",
+        }
 
         mock_httpx_client = AsyncMock()
         mock_httpx_client.get = AsyncMock(return_value=mock_resp)
@@ -275,6 +279,7 @@ class TestRegistryClient:
 class TestClientConfigGenerator:
     def test_supported_clients_list(self):
         from mcp_sentinel.config.client_gen import SUPPORTED_CLIENTS
+
         assert len(SUPPORTED_CLIENTS) >= 4
         assert "claude-desktop" in SUPPORTED_CLIENTS
         assert "vscode" in SUPPORTED_CLIENTS

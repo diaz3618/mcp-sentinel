@@ -59,22 +59,24 @@ class TestTokenCache:
 class TestStaticTokenProvider:
     def test_returns_headers(self) -> None:
         provider = StaticTokenProvider({"Authorization": "Bearer abc123"})
-        headers = asyncio.get_event_loop().run_until_complete(provider.get_headers())
+        headers = asyncio.run(provider.get_headers())
         assert headers == {"Authorization": "Bearer abc123"}
 
     def test_returns_copy(self) -> None:
         original = {"X-Key": "val"}
         provider = StaticTokenProvider(original)
-        h1 = asyncio.get_event_loop().run_until_complete(provider.get_headers())
-        h2 = asyncio.get_event_loop().run_until_complete(provider.get_headers())
+        h1 = asyncio.run(provider.get_headers())
+        h2 = asyncio.run(provider.get_headers())
         assert h1 is not h2
         assert h1 == h2
 
     def test_redacted_repr_masks_auth_headers(self) -> None:
-        provider = StaticTokenProvider({
-            "Authorization": "Bearer ghp_1234567890abcdef",
-            "X-Custom": "visible",
-        })
+        provider = StaticTokenProvider(
+            {
+                "Authorization": "Bearer ghp_1234567890abcdef",
+                "X-Custom": "visible",
+            }
+        )
         r = provider.redacted_repr()
         assert "ghp_1234567890abcdef" not in r
         assert "visible" in r
@@ -103,7 +105,7 @@ class TestOAuth2Provider:
             client_secret="csec",
         )
         provider._fetch_token = AsyncMock(return_value="access_tok_xyz")  # type: ignore[method-assign]
-        headers = asyncio.get_event_loop().run_until_complete(provider.get_headers())
+        headers = asyncio.run(provider.get_headers())
         assert headers == {"Authorization": "Bearer access_tok_xyz"}
         provider._fetch_token.assert_called_once()
 
@@ -117,7 +119,7 @@ class TestOAuth2Provider:
         # Pre-fill cache
         provider._cache.set("cached_tok", expires_in=3600.0)
         provider._fetch_token = AsyncMock()  # type: ignore[method-assign]
-        headers = asyncio.get_event_loop().run_until_complete(provider.get_headers())
+        headers = asyncio.run(provider.get_headers())
         assert headers == {"Authorization": "Bearer cached_tok"}
         provider._fetch_token.assert_not_called()
 
@@ -131,12 +133,14 @@ class TestCreateAuthProvider:
         assert isinstance(p, StaticTokenProvider)
 
     def test_oauth2(self) -> None:
-        p = create_auth_provider({
-            "type": "oauth2",
-            "token_url": "https://ex.com/token",
-            "client_id": "cid",
-            "client_secret": "csec",
-        })
+        p = create_auth_provider(
+            {
+                "type": "oauth2",
+                "token_url": "https://ex.com/token",
+                "client_id": "cid",
+                "client_secret": "csec",
+            }
+        )
         assert isinstance(p, OAuth2Provider)
 
     def test_unknown_type_raises(self) -> None:
@@ -220,18 +224,22 @@ class TestAuthConfigSchema:
 class TestMergeHeaders:
     def test_both_none(self) -> None:
         from mcp_sentinel.bridge.client_manager import _merge_headers
+
         assert _merge_headers(None, None) is None
 
     def test_only_static(self) -> None:
         from mcp_sentinel.bridge.client_manager import _merge_headers
+
         assert _merge_headers({"X": "1"}, None) == {"X": "1"}
 
     def test_only_auth(self) -> None:
         from mcp_sentinel.bridge.client_manager import _merge_headers
+
         assert _merge_headers(None, {"Authorization": "Bearer x"}) == {"Authorization": "Bearer x"}
 
     def test_auth_overrides_static(self) -> None:
         from mcp_sentinel.bridge.client_manager import _merge_headers
+
         result = _merge_headers(
             {"Authorization": "old", "X-Other": "keep"},
             {"Authorization": "new"},

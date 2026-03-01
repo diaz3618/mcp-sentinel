@@ -115,47 +115,47 @@ class TestUserIdentity:
 class TestAnonymousProvider:
     def test_returns_anonymous(self):
         prov = AnonymousProvider()
-        user = asyncio.get_event_loop().run_until_complete(prov.authenticate(None))
+        user = asyncio.run(prov.authenticate(None))
         assert user.is_anonymous
 
     def test_ignores_token(self):
         prov = AnonymousProvider()
-        user = asyncio.get_event_loop().run_until_complete(prov.authenticate("any-token"))
+        user = asyncio.run(prov.authenticate("any-token"))
         assert user.is_anonymous
 
 
 class TestLocalTokenProvider:
     def test_valid_token(self):
         prov = LocalTokenProvider("secret-123")
-        user = asyncio.get_event_loop().run_until_complete(prov.authenticate("secret-123"))
+        user = asyncio.run(prov.authenticate("secret-123"))
         assert user.subject == "local-user"
         assert user.provider == "local"
 
     def test_invalid_token(self):
         prov = LocalTokenProvider("secret-123")
         with pytest.raises(AuthenticationError, match="Invalid"):
-            asyncio.get_event_loop().run_until_complete(prov.authenticate("wrong"))
+            asyncio.run(prov.authenticate("wrong"))
 
     def test_missing_token(self):
         prov = LocalTokenProvider("secret-123")
         with pytest.raises(AuthenticationError, match="Missing"):
-            asyncio.get_event_loop().run_until_complete(prov.authenticate(None))
+            asyncio.run(prov.authenticate(None))
 
 
 class TestAuthProviderRegistry:
     def test_from_config_none(self):
         reg = AuthProviderRegistry.from_config(None)
-        user = asyncio.get_event_loop().run_until_complete(reg.authenticate(None))
+        user = asyncio.run(reg.authenticate(None))
         assert user.is_anonymous
 
     def test_from_config_anonymous(self):
         reg = AuthProviderRegistry.from_config({"type": "anonymous"})
-        user = asyncio.get_event_loop().run_until_complete(reg.authenticate(None))
+        user = asyncio.run(reg.authenticate(None))
         assert user.is_anonymous
 
     def test_from_config_local(self):
         reg = AuthProviderRegistry.from_config({"type": "local", "token": "tok"})
-        user = asyncio.get_event_loop().run_until_complete(reg.authenticate("tok"))
+        user = asyncio.run(reg.authenticate("tok"))
         assert user.provider == "local"
 
     def test_from_config_local_missing_token(self):
@@ -163,10 +163,12 @@ class TestAuthProviderRegistry:
             AuthProviderRegistry.from_config({"type": "local"})
 
     def test_from_config_jwt(self):
-        reg = AuthProviderRegistry.from_config({
-            "type": "jwt",
-            "jwks_uri": "https://example.com/.well-known/jwks.json",
-        })
+        reg = AuthProviderRegistry.from_config(
+            {
+                "type": "jwt",
+                "jwks_uri": "https://example.com/.well-known/jwks.json",
+            }
+        )
         assert reg is not None
 
     def test_from_config_unknown(self):
@@ -186,7 +188,7 @@ class TestAuthMiddleware:
         ctx = RequestContext(capability_name="test_tool", mcp_method="call_tool")
 
         handler = AsyncMock(return_value="ok")
-        result = asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+        result = asyncio.run(mw(ctx, handler))
 
         assert result == "ok"
         assert "user" in ctx.metadata
@@ -204,7 +206,7 @@ class TestAuthMiddleware:
         handler = AsyncMock()
 
         with pytest.raises(AuthenticationError):
-            asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+            asyncio.run(mw(ctx, handler))
 
         handler.assert_not_called()
 
@@ -217,7 +219,7 @@ class TestAuthMiddleware:
             metadata={"auth_token": "my-tok"},
         )
         handler = AsyncMock(return_value="done")
-        result = asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+        result = asyncio.run(mw(ctx, handler))
 
         assert result == "done"
         assert ctx.metadata["user"].provider == "local"
@@ -246,11 +248,13 @@ class TestResourceMatches:
 
 class TestAuthzPolicy:
     def test_from_dict(self):
-        p = AuthzPolicy.from_dict({
-            "effect": "allow",
-            "roles": ["admin"],
-            "resources": ["*"],
-        })
+        p = AuthzPolicy.from_dict(
+            {
+                "effect": "allow",
+                "roles": ["admin"],
+                "resources": ["*"],
+            }
+        )
         assert p.effect == "allow"
         assert p.roles == ["admin"]
 
@@ -277,10 +281,12 @@ class TestAuthzPolicy:
 
 class TestLoadPolicies:
     def test_valid_policies(self):
-        policies = load_policies([
-            {"effect": "allow", "roles": ["admin"], "resources": ["*"]},
-            {"effect": "deny", "roles": ["*"], "resources": ["tool:delete_*"]},
-        ])
+        policies = load_policies(
+            [
+                {"effect": "allow", "roles": ["admin"], "resources": ["*"]},
+                {"effect": "deny", "roles": ["*"], "resources": ["tool:delete_*"]},
+            ]
+        )
         assert len(policies) == 2
         assert policies[0].effect == "allow"
 
@@ -295,17 +301,21 @@ class TestLoadPolicies:
 
 class TestPolicyEngine:
     def test_first_match_allow(self):
-        engine = PolicyEngine([
-            AuthzPolicy(effect="allow", roles=["admin"], resources=["*"]),
-            AuthzPolicy(effect="deny", roles=["*"], resources=["*"]),
-        ])
+        engine = PolicyEngine(
+            [
+                AuthzPolicy(effect="allow", roles=["admin"], resources=["*"]),
+                AuthzPolicy(effect="deny", roles=["*"], resources=["*"]),
+            ]
+        )
         assert engine.evaluate(["admin"], "tool:x") == PolicyDecision.ALLOW
 
     def test_first_match_deny(self):
-        engine = PolicyEngine([
-            AuthzPolicy(effect="deny", roles=["*"], resources=["tool:danger*"]),
-            AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
-        ])
+        engine = PolicyEngine(
+            [
+                AuthzPolicy(effect="deny", roles=["*"], resources=["tool:danger*"]),
+                AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
+            ]
+        )
         assert engine.evaluate(["user"], "tool:danger_delete") == PolicyDecision.DENY
 
     def test_default_deny(self):
@@ -317,13 +327,13 @@ class TestPolicyEngine:
         assert engine.evaluate(["user"], "tool:x") == PolicyDecision.ALLOW
 
     def test_filter_allowed(self):
-        engine = PolicyEngine([
-            AuthzPolicy(effect="deny", roles=["*"], resources=["tool:secret"]),
-            AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
-        ])
-        result = engine.filter_allowed(
-            ["user"], ["tool:read", "tool:secret", "tool:write"]
+        engine = PolicyEngine(
+            [
+                AuthzPolicy(effect="deny", roles=["*"], resources=["tool:secret"]),
+                AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
+            ]
         )
+        result = engine.filter_allowed(["user"], ["tool:read", "tool:secret", "tool:write"])
         assert result == ["tool:read", "tool:write"]
 
     def test_reload(self):
@@ -333,10 +343,12 @@ class TestPolicyEngine:
         assert engine.evaluate(["admin"], "tool:x") == PolicyDecision.ALLOW
 
     def test_from_config(self):
-        engine = PolicyEngine.from_config({
-            "policies": [{"effect": "allow", "roles": ["admin"], "resources": ["*"]}],
-            "default_effect": "deny",
-        })
+        engine = PolicyEngine.from_config(
+            {
+                "policies": [{"effect": "allow", "roles": ["admin"], "resources": ["*"]}],
+                "default_effect": "deny",
+            }
+        )
         assert engine.evaluate(["admin"], "tool:x") == PolicyDecision.ALLOW
         assert engine.evaluate(["user"], "tool:x") == PolicyDecision.DENY
 
@@ -348,9 +360,11 @@ class TestPolicyEngine:
 
 class TestAuthzMiddleware:
     def test_allow(self):
-        engine = PolicyEngine([
-            AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
-        ])
+        engine = PolicyEngine(
+            [
+                AuthzPolicy(effect="allow", roles=["*"], resources=["*"]),
+            ]
+        )
         mw = AuthzMiddleware(engine)
         ctx = RequestContext(
             capability_name="test_tool",
@@ -358,13 +372,15 @@ class TestAuthzMiddleware:
             metadata={"user": UserIdentity(roles=["user"])},
         )
         handler = AsyncMock(return_value="ok")
-        result = asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+        result = asyncio.run(mw(ctx, handler))
         assert result == "ok"
 
     def test_deny(self):
-        engine = PolicyEngine([
-            AuthzPolicy(effect="deny", roles=["*"], resources=["*"]),
-        ])
+        engine = PolicyEngine(
+            [
+                AuthzPolicy(effect="deny", roles=["*"], resources=["*"]),
+            ]
+        )
         mw = AuthzMiddleware(engine)
         ctx = RequestContext(
             capability_name="test_tool",
@@ -374,7 +390,7 @@ class TestAuthzMiddleware:
         handler = AsyncMock()
 
         with pytest.raises(AuthorizationError, match="Access denied"):
-            asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+            asyncio.run(mw(ctx, handler))
 
         handler.assert_not_called()
 
@@ -386,7 +402,7 @@ class TestAuthzMiddleware:
             mcp_method="call_tool",
         )
         handler = AsyncMock(return_value="ok")
-        result = asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+        result = asyncio.run(mw(ctx, handler))
         assert result == "ok"
 
 
@@ -445,7 +461,7 @@ class TestTelemetryMiddleware:
         ctx.server_name = "backend1"
 
         handler = AsyncMock(return_value="result")
-        result = asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+        result = asyncio.run(mw(ctx, handler))
         assert result == "result"
         handler.assert_called_once_with(ctx)
 
@@ -458,7 +474,7 @@ class TestTelemetryMiddleware:
         handler = AsyncMock(side_effect=RuntimeError("boom"))
 
         with pytest.raises(RuntimeError, match="boom"):
-            asyncio.get_event_loop().run_until_complete(mw(ctx, handler))
+            asyncio.run(mw(ctx, handler))
 
 
 # ═══════════════════════════════════════════════════════════════════════

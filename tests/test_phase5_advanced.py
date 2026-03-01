@@ -53,16 +53,18 @@ class TestStep:
         assert s.on_error == "fail"
 
     def test_from_dict_full(self):
-        s = Step.from_dict({
-            "id": "b",
-            "tool": "x.y",
-            "args": {"k": "v"},
-            "depends_on": ["a"],
-            "condition": "${a.status} == 'completed'",
-            "retry": 2,
-            "on_error": "skip",
-            "description": "do stuff",
-        })
+        s = Step.from_dict(
+            {
+                "id": "b",
+                "tool": "x.y",
+                "args": {"k": "v"},
+                "depends_on": ["a"],
+                "condition": "${a.status} == 'completed'",
+                "retry": 2,
+                "on_error": "skip",
+                "description": "do stuff",
+            }
+        )
         assert s.depends_on == ["a"]
         assert s.retry == 2
         assert s.on_error == "skip"
@@ -79,13 +81,15 @@ from mcp_sentinel.workflows.dsl import (
 
 class TestParseWorkflow:
     def test_valid_linear(self):
-        wf = parse_workflow({
-            "name": "test-wf",
-            "steps": [
-                {"id": "s1", "tool": "t1"},
-                {"id": "s2", "tool": "t2", "depends_on": ["s1"]},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "test-wf",
+                "steps": [
+                    {"id": "s1", "tool": "t1"},
+                    {"id": "s2", "tool": "t2", "depends_on": ["s1"]},
+                ],
+            }
+        )
         assert wf.name == "test-wf"
         assert len(wf.steps) == 2
 
@@ -99,57 +103,67 @@ class TestParseWorkflow:
 
     def test_duplicate_ids(self):
         with pytest.raises(WorkflowValidationError, match="Duplicate"):
-            parse_workflow({
-                "name": "dup",
-                "steps": [
-                    {"id": "s1", "tool": "t"},
-                    {"id": "s1", "tool": "t2"},
-                ],
-            })
+            parse_workflow(
+                {
+                    "name": "dup",
+                    "steps": [
+                        {"id": "s1", "tool": "t"},
+                        {"id": "s1", "tool": "t2"},
+                    ],
+                }
+            )
 
     def test_bad_dependency(self):
         with pytest.raises(WorkflowValidationError, match="unknown step"):
-            parse_workflow({
-                "name": "bad-dep",
-                "steps": [
-                    {"id": "s1", "tool": "t", "depends_on": ["nope"]},
-                ],
-            })
+            parse_workflow(
+                {
+                    "name": "bad-dep",
+                    "steps": [
+                        {"id": "s1", "tool": "t", "depends_on": ["nope"]},
+                    ],
+                }
+            )
 
     def test_cycle_detected(self):
         with pytest.raises(WorkflowValidationError, match="Cycle"):
-            parse_workflow({
-                "name": "cycle",
-                "steps": [
-                    {"id": "a", "tool": "t", "depends_on": ["b"]},
-                    {"id": "b", "tool": "t", "depends_on": ["a"]},
-                ],
-            })
+            parse_workflow(
+                {
+                    "name": "cycle",
+                    "steps": [
+                        {"id": "a", "tool": "t", "depends_on": ["b"]},
+                        {"id": "b", "tool": "t", "depends_on": ["a"]},
+                    ],
+                }
+            )
 
 
 class TestTopologicalOrder:
     def test_parallel_steps(self):
-        wf = parse_workflow({
-            "name": "par",
-            "steps": [
-                {"id": "a", "tool": "t"},
-                {"id": "b", "tool": "t"},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "par",
+                "steps": [
+                    {"id": "a", "tool": "t"},
+                    {"id": "b", "tool": "t"},
+                ],
+            }
+        )
         levels = wf.topological_order()
         assert len(levels) == 1
         ids = {s.id for s in levels[0]}
         assert ids == {"a", "b"}
 
     def test_sequential_levels(self):
-        wf = parse_workflow({
-            "name": "seq",
-            "steps": [
-                {"id": "a", "tool": "t"},
-                {"id": "b", "tool": "t", "depends_on": ["a"]},
-                {"id": "c", "tool": "t", "depends_on": ["b"]},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "seq",
+                "steps": [
+                    {"id": "a", "tool": "t"},
+                    {"id": "b", "tool": "t", "depends_on": ["a"]},
+                    {"id": "c", "tool": "t", "depends_on": ["b"]},
+                ],
+            }
+        )
         levels = wf.topological_order()
         assert len(levels) == 3
         assert levels[0][0].id == "a"
@@ -157,15 +171,17 @@ class TestTopologicalOrder:
         assert levels[2][0].id == "c"
 
     def test_diamond(self):
-        wf = parse_workflow({
-            "name": "diamond",
-            "steps": [
-                {"id": "a", "tool": "t"},
-                {"id": "b", "tool": "t", "depends_on": ["a"]},
-                {"id": "c", "tool": "t", "depends_on": ["a"]},
-                {"id": "d", "tool": "t", "depends_on": ["b", "c"]},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "diamond",
+                "steps": [
+                    {"id": "a", "tool": "t"},
+                    {"id": "b", "tool": "t", "depends_on": ["a"]},
+                    {"id": "c", "tool": "t", "depends_on": ["a"]},
+                    {"id": "d", "tool": "t", "depends_on": ["b", "c"]},
+                ],
+            }
+        )
         levels = wf.topological_order()
         assert len(levels) == 3
         level2_ids = {s.id for s in levels[1]}
@@ -195,29 +211,33 @@ def _make_tool_invoker(results: Dict[str, Any] | None = None):
 
 class TestWorkflowExecutor:
     def test_single_step(self):
-        wf = parse_workflow({
-            "name": "one",
-            "steps": [{"id": "s1", "tool": "echo"}],
-        })
+        wf = parse_workflow(
+            {
+                "name": "one",
+                "steps": [{"id": "s1", "tool": "echo"}],
+            }
+        )
         invoker = _make_tool_invoker({"echo": "hello"})
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         assert results["s1"].status == StepStatus.COMPLETED
         assert results["s1"].output == "hello"
 
     def test_sequential_interpolation(self):
-        wf = parse_workflow({
-            "name": "interp",
-            "steps": [
-                {"id": "s1", "tool": "echo"},
-                {
-                    "id": "s2",
-                    "tool": "consume",
-                    "depends_on": ["s1"],
-                    "args": {"data": "${s1.output}"},
-                },
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "interp",
+                "steps": [
+                    {"id": "s1", "tool": "echo"},
+                    {
+                        "id": "s2",
+                        "tool": "consume",
+                        "depends_on": ["s1"],
+                        "args": {"data": "${s1.output}"},
+                    },
+                ],
+            }
+        )
 
         async def invoker(tool: str, args: dict) -> Any:
             if tool == "echo":
@@ -225,17 +245,19 @@ class TestWorkflowExecutor:
             return args
 
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         assert results["s2"].output["data"] == {"value": 42}
 
     def test_parallel_execution(self):
-        wf = parse_workflow({
-            "name": "par",
-            "steps": [
-                {"id": "a", "tool": "t"},
-                {"id": "b", "tool": "t"},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "par",
+                "steps": [
+                    {"id": "a", "tool": "t"},
+                    {"id": "b", "tool": "t"},
+                ],
+            }
+        )
         call_order = []
 
         async def invoker(tool: str, args: dict) -> Any:
@@ -243,15 +265,17 @@ class TestWorkflowExecutor:
             return None
 
         executor = WorkflowExecutor(invoker)
-        asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        asyncio.run(executor.execute(wf))
         # Both should run (order may vary since they're in same level)
         assert len(call_order) == 2
 
     def test_retry_on_failure(self):
-        wf = parse_workflow({
-            "name": "retry",
-            "steps": [{"id": "s1", "tool": "flaky", "retry": 2, "on_error": "continue"}],
-        })
+        wf = parse_workflow(
+            {
+                "name": "retry",
+                "steps": [{"id": "s1", "tool": "flaky", "retry": 2, "on_error": "continue"}],
+            }
+        )
         attempt_count = {"n": 0}
 
         async def invoker(tool: str, args: dict) -> Any:
@@ -261,36 +285,40 @@ class TestWorkflowExecutor:
             return "ok"
 
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         assert results["s1"].status == StepStatus.COMPLETED
         assert attempt_count["n"] == 3
 
     def test_condition_skip(self):
-        wf = parse_workflow({
-            "name": "cond",
-            "steps": [
-                {"id": "s1", "tool": "t"},
-                {
-                    "id": "s2",
-                    "tool": "t",
-                    "depends_on": ["s1"],
-                    "condition": "${s1.status} == 'failed'",
-                },
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "cond",
+                "steps": [
+                    {"id": "s1", "tool": "t"},
+                    {
+                        "id": "s2",
+                        "tool": "t",
+                        "depends_on": ["s1"],
+                        "condition": "${s1.status} == 'failed'",
+                    },
+                ],
+            }
+        )
         invoker = _make_tool_invoker({"t": "done"})
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         assert results["s2"].status == StepStatus.SKIPPED
 
     def test_fail_fast(self):
-        wf = parse_workflow({
-            "name": "failfast",
-            "steps": [
-                {"id": "s1", "tool": "boom"},
-                {"id": "s2", "tool": "t", "depends_on": ["s1"]},
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "failfast",
+                "steps": [
+                    {"id": "s1", "tool": "boom"},
+                    {"id": "s2", "tool": "t", "depends_on": ["s1"]},
+                ],
+            }
+        )
 
         async def invoker(tool: str, args: dict) -> Any:
             if tool == "boom":
@@ -298,7 +326,7 @@ class TestWorkflowExecutor:
             return "ok"
 
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         # s1 should fail (caught by _execute_step retry)
         assert results["s1"].status == StepStatus.FAILED
         assert "kaboom" in results["s1"].error
@@ -306,39 +334,41 @@ class TestWorkflowExecutor:
         assert results["s2"].status == StepStatus.FAILED
 
     def test_input_interpolation(self):
-        wf = parse_workflow({
-            "name": "inp",
-            "steps": [
-                {"id": "s1", "tool": "echo", "args": {"q": "${inputs.query}"}},
-            ],
-            "inputs": {"query": {"type": "string"}},
-        })
+        wf = parse_workflow(
+            {
+                "name": "inp",
+                "steps": [
+                    {"id": "s1", "tool": "echo", "args": {"q": "${inputs.query}"}},
+                ],
+                "inputs": {"query": {"type": "string"}},
+            }
+        )
 
         async def invoker(tool: str, args: dict) -> Any:
             return args
 
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(
-            executor.execute(wf, inputs={"query": "hello"})
-        )
+        results = asyncio.run(executor.execute(wf, inputs={"query": "hello"}))
         assert results["s1"].output["q"] == "hello"
 
     def test_condition_neq(self):
-        wf = parse_workflow({
-            "name": "neq",
-            "steps": [
-                {"id": "s1", "tool": "t"},
-                {
-                    "id": "s2",
-                    "tool": "t",
-                    "depends_on": ["s1"],
-                    "condition": "${s1.status} != 'failed'",
-                },
-            ],
-        })
+        wf = parse_workflow(
+            {
+                "name": "neq",
+                "steps": [
+                    {"id": "s1", "tool": "t"},
+                    {
+                        "id": "s2",
+                        "tool": "t",
+                        "depends_on": ["s1"],
+                        "condition": "${s1.status} != 'failed'",
+                    },
+                ],
+            }
+        )
         invoker = _make_tool_invoker({"t": "done"})
         executor = WorkflowExecutor(invoker)
-        results = asyncio.get_event_loop().run_until_complete(executor.execute(wf))
+        results = asyncio.run(executor.execute(wf))
         assert results["s2"].status == StepStatus.COMPLETED
 
 
@@ -350,12 +380,14 @@ from mcp_sentinel.workflows.composite_tool import CompositeTool, load_composite_
 
 class TestCompositeTool:
     def test_properties(self):
-        wf = parse_workflow({
-            "name": "my-tool",
-            "description": "desc",
-            "steps": [{"id": "s1", "tool": "t"}],
-            "inputs": {"x": {"type": "string", "description": "param x"}},
-        })
+        wf = parse_workflow(
+            {
+                "name": "my-tool",
+                "description": "desc",
+                "steps": [{"id": "s1", "tool": "t"}],
+                "inputs": {"x": {"type": "string", "description": "param x"}},
+            }
+        )
         invoker = _make_tool_invoker()
         ct = CompositeTool(wf, invoker)
         assert ct.name == "my-tool"
@@ -365,21 +397,25 @@ class TestCompositeTool:
         assert schema["properties"]["x"]["type"] == "string"
 
     def test_invoke_returns_output(self):
-        wf = parse_workflow({
-            "name": "ct",
-            "steps": [{"id": "s1", "tool": "echo"}],
-        })
+        wf = parse_workflow(
+            {
+                "name": "ct",
+                "steps": [{"id": "s1", "tool": "echo"}],
+            }
+        )
         invoker = _make_tool_invoker({"echo": {"result": 42}})
         ct = CompositeTool(wf, invoker)
-        result = asyncio.get_event_loop().run_until_complete(ct.invoke({}))
+        result = asyncio.run(ct.invoke({}))
         assert result == {"result": 42}
 
     def test_to_tool_info(self):
-        wf = parse_workflow({
-            "name": "info",
-            "description": "info tool",
-            "steps": [{"id": "s1", "tool": "t"}],
-        })
+        wf = parse_workflow(
+            {
+                "name": "info",
+                "description": "info tool",
+                "steps": [{"id": "s1", "tool": "t"}],
+            }
+        )
         ct = CompositeTool(wf, _make_tool_invoker())
         info = ct.to_tool_info()
         assert info["name"] == "info"
@@ -395,14 +431,16 @@ class TestCompositeTool:
         assert tools[0].name == "w1"
 
     def test_output_template(self):
-        wf = parse_workflow({
-            "name": "tmpl",
-            "steps": [{"id": "s1", "tool": "echo"}],
-            "output": "${s1.output}",
-        })
+        wf = parse_workflow(
+            {
+                "name": "tmpl",
+                "steps": [{"id": "s1", "tool": "echo"}],
+                "output": "${s1.output}",
+            }
+        )
         invoker = _make_tool_invoker({"echo": "final"})
         ct = CompositeTool(wf, invoker)
-        result = asyncio.get_event_loop().run_until_complete(ct.invoke({}))
+        result = asyncio.run(ct.invoke({}))
         assert result == "final"
 
 
@@ -437,18 +475,20 @@ class TestElicitationField:
 
 class TestElicitationRequest:
     def test_from_message(self):
-        req = ElicitationRequest.from_message({
-            "requestId": "abc123",
-            "toolName": "my-tool",
-            "message": "Need info",
-            "schema": {
-                "properties": {
-                    "name": {"type": "string"},
-                    "age": {"type": "integer"},
+        req = ElicitationRequest.from_message(
+            {
+                "requestId": "abc123",
+                "toolName": "my-tool",
+                "message": "Need info",
+                "schema": {
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "required": ["name"],
                 },
-                "required": ["name"],
-            },
-        })
+            }
+        )
         assert req.request_id == "abc123"
         assert req.tool_name == "my-tool"
         fields = req.fields
@@ -478,7 +518,7 @@ class TestElicitationBridge:
     def test_no_handler_denies(self):
         bridge = ElicitationBridge()
         req = ElicitationRequest(request_id="r1", message="hi")
-        resp = asyncio.get_event_loop().run_until_complete(bridge.handle_request(req))
+        resp = asyncio.run(bridge.handle_request(req))
         assert resp.status == ElicitationStatus.DENIED
 
     def test_handler_approved(self):
@@ -489,7 +529,7 @@ class TestElicitationBridge:
 
         bridge.register_handler(handler)
         req = ElicitationRequest(request_id="r2", message="hi")
-        resp = asyncio.get_event_loop().run_until_complete(bridge.handle_request(req))
+        resp = asyncio.run(bridge.handle_request(req))
         assert resp.status == ElicitationStatus.APPROVED
         assert resp.data["name"] == "Bob"
 
@@ -501,7 +541,7 @@ class TestElicitationBridge:
 
         bridge.register_handler(handler)
         req = ElicitationRequest(request_id="r3", message="hi")
-        resp = asyncio.get_event_loop().run_until_complete(bridge.handle_request(req))
+        resp = asyncio.run(bridge.handle_request(req))
         assert resp.status == ElicitationStatus.DENIED
 
     def test_timeout(self):
@@ -513,7 +553,7 @@ class TestElicitationBridge:
 
         bridge.register_handler(slow_handler)
         req = ElicitationRequest(request_id="r4", message="hi", timeout_seconds=0.1)
-        resp = asyncio.get_event_loop().run_until_complete(bridge.handle_request(req))
+        resp = asyncio.run(bridge.handle_request(req))
         assert resp.status == ElicitationStatus.TIMEOUT
 
     def test_has_pending(self):
@@ -584,16 +624,12 @@ class TestDriftResult:
 class TestVersionChecker:
     def test_no_registry(self):
         checker = VersionChecker(registry_client=None)
-        results = asyncio.get_event_loop().run_until_complete(
-            checker.check_all({"t": {"version": "1.0.0"}})
-        )
+        results = asyncio.run(checker.check_all({"t": {"version": "1.0.0"}}))
         assert results == []
 
     def test_check_one_no_registry(self):
         checker = VersionChecker()
-        result = asyncio.get_event_loop().run_until_complete(
-            checker.check_one("t", "1.0.0")
-        )
+        result = asyncio.run(checker.check_one("t", "1.0.0"))
         assert result is None
 
     def test_check_all_with_mock_registry(self):
@@ -601,12 +637,11 @@ class TestVersionChecker:
             async def get_server(self, name):
                 class S:
                     version = "2.0.0"
+
                 return S()
 
         checker = VersionChecker(registry_client=FakeRegistry())
-        results = asyncio.get_event_loop().run_until_complete(
-            checker.check_all({"tool-a": {"version": "1.0.0"}})
-        )
+        results = asyncio.run(checker.check_all({"tool-a": {"version": "1.0.0"}}))
         assert len(results) == 1
         assert results[0].severity == DriftSeverity.MAJOR
 
@@ -637,17 +672,19 @@ class TestSkillManifest:
         assert m.tools == []
 
     def test_from_dict_full(self):
-        m = SkillManifest.from_dict({
-            "name": "full",
-            "version": "1.2.3",
-            "description": "desc",
-            "tools": [{"name": "tool-a"}],
-            "workflows": [{"name": "wf-a"}],
-            "config": {"key": "val"},
-            "dependencies": ["other"],
-            "author": "Me",
-            "license": "MIT",
-        })
+        m = SkillManifest.from_dict(
+            {
+                "name": "full",
+                "version": "1.2.3",
+                "description": "desc",
+                "tools": [{"name": "tool-a"}],
+                "workflows": [{"name": "wf-a"}],
+                "config": {"key": "val"},
+                "dependencies": ["other"],
+                "author": "Me",
+                "license": "MIT",
+            }
+        )
         assert m.version == "1.2.3"
         assert len(m.tools) == 1
         assert m.dependencies == ["other"]
@@ -686,9 +723,7 @@ class TestSkillManifest:
         assert any("name" in e.lower() for e in errors)
 
     def test_from_file(self):
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", mode="w", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as f:
             json.dump({"name": "file-skill", "version": "1.0.0"}, f)
             f.flush()
             path = f.name
@@ -700,9 +735,7 @@ class TestSkillManifest:
             os.unlink(path)
 
     def test_from_file_bad_json(self):
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", mode="w", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as f:
             f.write("not json")
             f.flush()
             path = f.name

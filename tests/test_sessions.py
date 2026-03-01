@@ -105,9 +105,7 @@ class TestSessionPersistence:
 
     def test_remove_session(self, tmp_path):
         with mock.patch("mcp_sentinel.sessions._SESSION_DIR", str(tmp_path)):
-            info = SessionInfo(
-                name="removeme", pid=1, host="127.0.0.1", port=9000, config=""
-            )
+            info = SessionInfo(name="removeme", pid=1, host="127.0.0.1", port=9000, config="")
             save_session(info)
             assert load_session("removeme") is not None
 
@@ -143,9 +141,7 @@ class TestListSessions:
             save_session(alive)
 
             # Save dead process
-            dead = SessionInfo(
-                name="dead", pid=999999999, host="127.0.0.1", port=8080, config=""
-            )
+            dead = SessionInfo(name="dead", pid=999999999, host="127.0.0.1", port=8080, config="")
             save_session(dead)
 
             sessions = list_sessions()
@@ -157,9 +153,7 @@ class TestListSessions:
 
     def test_include_dead(self, tmp_path):
         with mock.patch("mcp_sentinel.sessions._SESSION_DIR", str(tmp_path)):
-            dead = SessionInfo(
-                name="dead", pid=999999999, host="127.0.0.1", port=8080, config=""
-            )
+            dead = SessionInfo(name="dead", pid=999999999, host="127.0.0.1", port=8080, config="")
             save_session(dead)
 
             sessions = list_sessions(include_dead=True)
@@ -189,17 +183,13 @@ class TestFindSession:
 
     def test_find_by_name_dead_returns_none(self, tmp_path):
         with mock.patch("mcp_sentinel.sessions._SESSION_DIR", str(tmp_path)):
-            info = SessionInfo(
-                name="dead", pid=999999999, host="127.0.0.1", port=9000, config=""
-            )
+            info = SessionInfo(name="dead", pid=999999999, host="127.0.0.1", port=9000, config="")
             save_session(info)
             assert find_session("dead") is None
 
     def test_find_only_session(self, tmp_path):
         with mock.patch("mcp_sentinel.sessions._SESSION_DIR", str(tmp_path)):
-            info = SessionInfo(
-                name="only", pid=os.getpid(), host="127.0.0.1", port=9000, config=""
-            )
+            info = SessionInfo(name="only", pid=os.getpid(), host="127.0.0.1", port=9000, config="")
             save_session(info)
 
             found = find_session()
@@ -209,12 +199,8 @@ class TestFindSession:
     def test_find_none_when_multiple(self, tmp_path):
         with mock.patch("mcp_sentinel.sessions._SESSION_DIR", str(tmp_path)):
             # Both use current PID so they appear alive
-            info1 = SessionInfo(
-                name="one", pid=os.getpid(), host="127.0.0.1", port=9000, config=""
-            )
-            info2 = SessionInfo(
-                name="two", pid=os.getpid(), host="127.0.0.1", port=8080, config=""
-            )
+            info1 = SessionInfo(name="one", pid=os.getpid(), host="127.0.0.1", port=9000, config="")
+            info2 = SessionInfo(name="two", pid=os.getpid(), host="127.0.0.1", port=8080, config="")
             save_session(info1)
             save_session(info2)
 
