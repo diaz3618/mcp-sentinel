@@ -20,6 +20,7 @@ from mcp_sentinel.constants import (
 )
 from mcp_sentinel.tui.events import (
     CapabilitiesReady,
+    ConfigSyncUpdate,
     ConnectionLost,
     ConnectionRestored,
 )
@@ -584,7 +585,11 @@ class SentinelApp(App):
             pass  # Widget not in active screen
 
     def _apply_events_response(self, events_resp: Any) -> None:
-        """Show new events in the EventLogWidget."""
+        """Show new events in the EventLogWidget.
+
+        Also detects ``config_sync`` stage events and posts a
+        :class:`ConfigSyncUpdate` Textual message for :class:`SyncStatusWidget`.
+        """
         self._last_events = events_resp  # Cache for audit log screen
         for ev in events_resp.events:
             if ev.id in self._seen_event_ids:
@@ -604,6 +609,41 @@ class SentinelApp(App):
                 )
             except Exception:
                 pass  # Widget not in active screen
+
+            # Bridge config_sync events to SyncStatusWidget
+            if ev.stage == "config_sync" and ev.details:
+                details = ev.details if isinstance(ev.details, dict) else {}
+                self.post_message(
+                    ConfigSyncUpdate(
+                        config_file=details.get("config_file", ""),
+                        config_hash=details.get("config_hash", ""),
+                        sync_type=details.get("type", "changed"),
+                        details=ev.message,
+                        timestamp=ev.timestamp,
+                    )
+                )
+
+    def on_config_sync_update(self, event: ConfigSyncUpdate) -> None:
+        """Handle a config sync event by updating the SyncStatusWidget."""
+        from mcp_sentinel.tui.widgets.sync_status import SyncStatusWidget
+
+        try:
+            widget = self.screen.query_one(SyncStatusWidget)
+            widget.update_sync_status(
+                config_file=event.config_file,
+                config_hash=event.config_hash,
+                last_sync=event.timestamp,
+                is_live=event.sync_type != "error",
+            )
+            widget.add_sync_event(
+                {
+                    "time": event.timestamp,
+                    "type": event.sync_type,
+                    "details": event.details,
+                }
+            )
+        except Exception:
+            pass  # Widget not in active screen
 
     # ── Server selector ───────────────────────────────────────────
 

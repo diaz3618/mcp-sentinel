@@ -545,9 +545,41 @@ class SentinelService:
 
     async def _on_config_file_changed(self) -> None:
         """Callback for :class:`ConfigWatcher` — triggers a reload."""
+        import hashlib
+
         logger.info("Config file change detected by watcher, invoking reload...")
+
+        # Compute config hash for the sync widget
+        config_hash = ""
+        if self._config_path:
+            try:
+                with open(self._config_path, "rb") as fh:
+                    config_hash = hashlib.sha256(fh.read()).hexdigest()
+            except OSError:
+                pass
+
         result = await self.reload()
-        if result.get("errors"):
+
+        # Emit a config_sync event for the TUI SyncStatusWidget
+        has_errors = bool(result.get("errors"))
+        self.emit_event(
+            stage="config_sync",
+            message=(
+                "Config reloaded with errors" if has_errors else "Config reloaded successfully"
+            ),
+            severity="warning" if has_errors else "info",
+            details={
+                "type": "changed" if not has_errors else "error",
+                "config_file": self._config_path or "",
+                "config_hash": config_hash,
+                "reloaded": result.get("reloaded", False),
+                "backends_added": result.get("backends_added", []),
+                "backends_removed": result.get("backends_removed", []),
+                "errors": result.get("errors", []),
+            },
+        )
+
+        if has_errors:
             logger.warning("Auto-reload completed with errors: %s", result["errors"])
 
     # ------------------------------------------------------------------ #

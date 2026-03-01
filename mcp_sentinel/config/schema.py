@@ -95,6 +95,52 @@ class OptimizerConfig(BaseModel):
     )
 
 
+class TelemetrySettings(BaseModel):
+    """OpenTelemetry integration settings.
+
+    Controls whether the telemetry middleware is inserted into the
+    middleware chain and whether OTel exporters are initialized.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable OpenTelemetry tracing and metrics collection.",
+    )
+    otlp_endpoint: str = Field(
+        default="http://localhost:4317",
+        description="OTLP collector endpoint (gRPC or HTTP).",
+    )
+    service_name: str = Field(
+        default="mcp-sentinel",
+        description="Service name reported to the OTel collector.",
+    )
+
+
+class SecretsConfig(BaseModel):
+    """Encrypted secret management settings.
+
+    When configured, ``secret:<name>`` references in config values are
+    resolved via the chosen provider before Pydantic validation.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable automatic secret resolution in config values.",
+    )
+    provider: str = Field(
+        default="env",
+        description="Secret provider type: 'env', 'file', or 'keyring'.",
+    )
+    path: str = Field(
+        default="",
+        description="Path for the file-based secret provider (ignored for other providers).",
+    )
+    strict: bool = Field(
+        default=False,
+        description="Raise an error if a referenced secret cannot be resolved.",
+    )
+
+
 # ── Top-level config ────────────────────────────────────────────────────
 
 
@@ -122,6 +168,14 @@ class SentinelConfig(BaseModel):
     conflict_resolution: ConflictResolutionConfig = Field(default_factory=ConflictResolutionConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
     optimizer: OptimizerConfig = Field(default_factory=OptimizerConfig)
+    telemetry: TelemetrySettings = Field(
+        default_factory=TelemetrySettings,
+        description="OpenTelemetry tracing and metrics configuration.",
+    )
+    secrets: SecretsConfig = Field(
+        default_factory=SecretsConfig,
+        description="Encrypted secret management configuration.",
+    )
     registries: List[RegistryEntryConfig] = Field(
         default_factory=list,
         description=(

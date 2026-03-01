@@ -1,4 +1,4 @@
-"""Tests for config diff and watcher (Task 3.4)."""
+"""Tests for config diff and watcher """
 
 from __future__ import annotations
 

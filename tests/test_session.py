@@ -1,4 +1,4 @@
-"""Tests for session management (Task 3.2)."""
+"""Tests for session management """
 
 from __future__ import annotations
 

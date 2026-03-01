@@ -1,4 +1,4 @@
-"""Tests for FeatureFlags (Task 3.8) and YAML config loading (Task 3.7)."""
+"""Tests for FeatureFlags and YAML config loading """
 
 from __future__ import annotations
 
@@ -155,7 +155,7 @@ class TestReadConfigFile:
             os.unlink(path)
 
 
-# ── Client config generator (Task 3.6) ──────────────────────────────────
+# ── Client config generator ──────────────────────────────────
 
 
 class TestClientConfigGenerator:

@@ -241,6 +241,59 @@ class ClientManager:
         self._progress_cb: Optional[Callable[..., None]] = None
         logger.info("ClientManager initialized.")
 
+    @staticmethod
+    def _apply_network_env(
+        svr_name: str,
+        svr_conf: Dict[str, Any],
+        params: StdioServerParameters,
+    ) -> StdioServerParameters:
+        """Inject HTTP_PROXY / NO_PROXY env vars from network isolation config.
+
+        If the backend config contains a ``network`` section, the proxy
+        and bypass settings are merged into the subprocess environment.
+        Unknown ``network_mode`` values are silently ignored (host mode).
+        """
+        net_cfg = svr_conf.get("network")
+        if not isinstance(net_cfg, dict):
+            return params
+
+        mode = net_cfg.get("network_mode", "host")
+        if mode == "host":
+            return params  # no restrictions
+
+        # Merge existing env into a mutable copy
+        env = dict(params.env or {})
+
+        if mode == "none":
+            # Block all outbound HTTP via a dummy proxy
+            env.setdefault("HTTP_PROXY", "http://0.0.0.0:0")
+            env.setdefault("HTTPS_PROXY", "http://0.0.0.0:0")
+            env.setdefault("NO_PROXY", "")
+            logger.info("[%s] Network isolation: mode=none (offline).", svr_name)
+        elif mode == "bridge":
+            http_proxy = net_cfg.get("http_proxy", "")
+            no_proxy = net_cfg.get("no_proxy", "localhost,127.0.0.1")
+            if http_proxy:
+                env["HTTP_PROXY"] = http_proxy
+                env["HTTPS_PROXY"] = http_proxy
+            if no_proxy:
+                env["NO_PROXY"] = no_proxy
+            logger.info(
+                "[%s] Network isolation: mode=bridge, proxy=%s, no_proxy=%s.",
+                svr_name,
+                http_proxy or "(inherit)",
+                no_proxy,
+            )
+        else:
+            logger.debug("[%s] Unknown network_mode '%s'; skipping.", svr_name, mode)
+            return params
+
+        return StdioServerParameters(
+            command=params.command,
+            args=list(params.args) if params.args else [],
+            env=env if env else None,
+        )
+
     async def _init_stdio_backend(
         self, svr_name: str, stdio_cfg: StdioServerParameters
     ) -> Tuple[Any, ClientSession]:
@@ -412,6 +465,8 @@ class ClientManager:
                 raise ConfigurationError(
                     f"Invalid stdio config for server '{svr_name}' " "('params' type mismatch)."
                 )
+            # Apply network isolation env vars if configured
+            stdio_params = self._apply_network_env(svr_name, svr_conf, stdio_params)
             _, session = await self._init_stdio_backend(svr_name, stdio_params)
 
         elif svr_type == "sse":

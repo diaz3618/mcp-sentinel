@@ -116,39 +116,69 @@ def _attach_to_mcp_server(
         RoutingMiddleware,
         build_chain,
     )
+    from mcp_sentinel.bridge.middleware.telemetry import TelemetryMiddleware
     from mcp_sentinel.bridge.optimizer import ToolIndex
     from mcp_sentinel.config.loader import load_sentinel_config
+    from mcp_sentinel.config.schema import SentinelConfig
 
     mcp_svr_instance.manager = service.manager
     mcp_svr_instance.registry = service.registry
 
-    # Initialise the structured audit logger
-    audit_logger = AuditLogger()
-    mcp_svr_instance.audit_logger = audit_logger
-
-    # Build the middleware chain: Recovery → Audit → Routing (innermost).
-    routing = RoutingMiddleware(service.registry, service.manager)
-    chain = build_chain(
-        middlewares=[RecoveryMiddleware(), AuditMiddleware(audit_logger=audit_logger)],
-        handler=routing,
-    )
-    mcp_svr_instance.middleware_chain = chain
-    logger.info(
-        "ClientManager, CapabilityRegistry, and middleware chain "
-        "attached to mcp_server instance."
-    )
-
-    # ── Optimizer (Task 3.1) ─────────────────────────────────────────
-    optimizer_enabled = False
-    keep_list: list[str] = []
+    # ── Load full config once (used by multiple sections below) ──────
     config_path = getattr(service, "_config_path", None)
+    full_cfg: SentinelConfig | None = None
     if config_path:
         try:
             full_cfg = load_sentinel_config(config_path)
-            optimizer_enabled = full_cfg.optimizer.enabled
-            keep_list = list(full_cfg.optimizer.keep_tools)
         except Exception:
-            logger.debug("Could not read optimizer config; defaulting to disabled.")
+            logger.debug(
+                "Could not load full config; sub-features will use defaults.", exc_info=True
+            )
+
+    # ── Structured audit logger ──────────────────────────────────────
+    audit_logger = AuditLogger()
+    mcp_svr_instance.audit_logger = audit_logger
+
+    # ── Telemetry initialization (Task 4.3 wiring) ───────────────────
+    telemetry_enabled = False
+    if full_cfg is not None and full_cfg.telemetry.enabled:
+        try:
+            from mcp_sentinel.telemetry.config import TelemetryConfig
+
+            tel_config = TelemetryConfig(
+                enabled=True,
+                otlp_endpoint=full_cfg.telemetry.otlp_endpoint,
+                service_name=full_cfg.telemetry.service_name,
+            )
+            tel_config.initialize()
+            telemetry_enabled = True
+            logger.info(
+                "Telemetry initialized: endpoint=%s, service=%s",
+                full_cfg.telemetry.otlp_endpoint,
+                full_cfg.telemetry.service_name,
+            )
+        except Exception:
+            logger.debug("Telemetry init failed; continuing without OTel.", exc_info=True)
+
+    mcp_svr_instance.telemetry_enabled = telemetry_enabled
+
+    # ── Middleware chain: Recovery → Telemetry (opt.) → Audit → Routing
+    middlewares: list = [RecoveryMiddleware()]
+    if telemetry_enabled:
+        middlewares.append(TelemetryMiddleware())
+    middlewares.append(AuditMiddleware(audit_logger=audit_logger))
+
+    routing = RoutingMiddleware(service.registry, service.manager)
+    chain = build_chain(middlewares=middlewares, handler=routing)
+    mcp_svr_instance.middleware_chain = chain
+    logger.info(
+        "Middleware chain attached (telemetry=%s).",
+        "enabled" if telemetry_enabled else "disabled",
+    )
+
+    # ── Optimizer ─────────────────────────────────────────
+    optimizer_enabled = full_cfg.optimizer.enabled if full_cfg else False
+    keep_list: list[str] = list(full_cfg.optimizer.keep_tools) if full_cfg else []
 
     mcp_svr_instance.optimizer_enabled = optimizer_enabled
     mcp_svr_instance.optimizer_keep_list = keep_list
@@ -168,7 +198,7 @@ def _attach_to_mcp_server(
         mcp_svr_instance.optimizer_index = None
         logger.debug("Optimizer disabled.")
 
-    # ── Session Manager (Task 3.2) ───────────────────────────────────
+    # ── Session Manager ───────────────────────────────────
     from mcp_sentinel.server.session import SessionManager
 
     session_manager = SessionManager()
@@ -176,19 +206,26 @@ def _attach_to_mcp_server(
     mcp_svr_instance.session_manager = session_manager
     logger.info("SessionManager attached to mcp_server instance.")
 
-    # ── Feature Flags (Task 3.8) ─────────────────────────────────────
+    # ── Feature Flags ─────────────────────────────────────
     from mcp_sentinel.config.flags import FeatureFlags
 
-    ff_overrides: dict[str, bool] = {}
-    if config_path:
-        try:
-            _cfg = load_sentinel_config(config_path)
-            ff_overrides = dict(_cfg.feature_flags)
-        except Exception:
-            logger.debug("Could not read feature_flags config; using defaults.")
-
+    ff_overrides = dict(full_cfg.feature_flags) if full_cfg else {}
     mcp_svr_instance.feature_flags = FeatureFlags(ff_overrides)
     logger.info("Feature flags: %s", mcp_svr_instance.feature_flags)
+
+    # ── Version Drift Detection (Task 5.4 wiring) ────────────────────
+    from mcp_sentinel.bridge.version_checker import VersionChecker
+
+    mcp_svr_instance.version_checker = VersionChecker()
+    logger.info("VersionChecker attached (registry_client=None — drift available on demand).")
+
+    # ── Skills Manager (Task 5.6 wiring) ─────────────────────────────
+    from mcp_sentinel.skills.manager import SkillManager
+
+    skill_manager = SkillManager()
+    skill_manager.discover()
+    mcp_svr_instance.skill_manager = skill_manager
+    logger.info("SkillManager attached: %d skill(s) discovered.", len(skill_manager.list_skills()))
 
     # ── Composite Workflows (Task 6) ────────────────────────────────
     _load_composite_workflows(mcp_svr_instance, chain)

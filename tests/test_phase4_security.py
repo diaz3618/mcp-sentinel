@@ -1,5 +1,4 @@
-"""Tests for Phase 4: Security Features.
-
+"""
 Covers:
 - Task 4.1: JWT/OIDC Authentication (jwt, oidc, providers, auth middleware)
 - Task 4.2: Role-Based Authorization (policies, engine, authz middleware)

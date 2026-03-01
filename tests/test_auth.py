@@ -1,4 +1,4 @@
-"""Tests for outgoing authentication (Task 3.3)."""
+"""Tests for outgoing authentication """
 
 from __future__ import annotations
 

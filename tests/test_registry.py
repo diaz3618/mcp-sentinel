@@ -1,4 +1,4 @@
-"""Tests for the registry module (Task 3.5) — models, cache, client."""
+"""Tests for the registry module — models, cache, client."""
 
 from __future__ import annotations
 
@@ -269,7 +269,7 @@ class TestRegistryClient:
         assert client._client is None
 
 
-# ── Client Config Generator (Task 3.6) ──────────────────────────────────
+# ── Client Config Generator ──────────────────────────────────
 
 
 class TestClientConfigGenerator:

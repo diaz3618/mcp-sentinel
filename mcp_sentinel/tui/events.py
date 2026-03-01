@@ -37,3 +37,25 @@ class ConnectionRestored(Message):
 
     def __init__(self) -> None:
         super().__init__()
+
+
+class ConfigSyncUpdate(Message):
+    """Posted when the server reports a config file change.
+
+    Carries the details needed by :class:`SyncStatusWidget` to refresh.
+    """
+
+    def __init__(
+        self,
+        config_file: str = "",
+        config_hash: str = "",
+        sync_type: str = "changed",
+        details: str = "",
+        timestamp: str = "",
+    ) -> None:
+        self.config_file = config_file
+        self.config_hash = config_hash
+        self.sync_type = sync_type
+        self.details = details
+        self.timestamp = timestamp
+        super().__init__()

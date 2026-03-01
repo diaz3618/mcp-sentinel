@@ -160,17 +160,38 @@ class OptimizerPanel(Widget):
             self._do_test_search()
 
     def _do_test_search(self) -> None:
-        """Run a test search (placeholder — actual implementation depends on optimizer backend)."""
+        """Run a test search using the real ToolIndex when available.
+
+        Falls back to substring matching against cached capabilities
+        if the optimizer index is not accessible from the app.
+        """
         try:
             query = self.query_one("#opt-search-input", Input).value.strip()
             if not query:
                 return
-            # For now, search through cached capabilities
+
+            limit = 5
+            try:
+                limit = int(self.query_one("#opt-limit-input", Input).value)
+            except Exception:
+                pass
+
+            # Prefer the real ToolIndex from the optimizer
+            from mcp_sentinel.server.app import mcp_server
+
+            optimizer_index = getattr(mcp_server, "optimizer_index", None)
+            if optimizer_index is not None:
+                results = optimizer_index.search(query, limit=limit)
+                self.update_search_results(results)
+                return
+
+            # Fallback: substring match against cached capabilities
             app = self.app
             caps = getattr(app, "_last_caps", None)
             if caps is None:
                 self.app.notify(
-                    "No capabilities cached — connect to a server first", severity="warning"
+                    "No capabilities cached — connect to a server first",
+                    severity="warning",
                 )
                 return
 
@@ -189,11 +210,6 @@ class OptimizerPanel(Widget):
                     matches.append({**tool_dict, "score": score})
 
             matches.sort(key=lambda x: x["score"], reverse=True)
-            limit = 5
-            try:
-                limit = int(self.query_one("#opt-limit-input", Input).value)
-            except Exception:
-                pass
             self.update_search_results(matches[:limit])
         except Exception:
             logger.debug("Test search failed", exc_info=True)

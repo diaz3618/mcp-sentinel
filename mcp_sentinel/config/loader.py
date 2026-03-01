@@ -116,6 +116,47 @@ def _format_validation_errors(exc: ValidationError) -> str:
     return "\n".join(lines)
 
 
+def _maybe_resolve_secrets(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Resolve ``secret:<name>`` references if the secrets section is enabled.
+
+    This runs *before* Pydantic validation so that secret values are
+    available as plain strings during model construction.
+    """
+    secrets_section = raw_data.get("secrets")
+    if not isinstance(secrets_section, dict):
+        return raw_data
+
+    # Quick pre-check: is secrets resolution enabled?
+    if not secrets_section.get("enabled", False):
+        return raw_data
+
+    from mcp_sentinel.secrets.resolver import find_secret_references, resolve_secrets
+    from mcp_sentinel.secrets.store import SecretStore
+
+    refs = find_secret_references(raw_data)
+    if not refs:
+        logger.debug("Secrets enabled but no secret: references found.")
+        return raw_data
+
+    provider_type = secrets_section.get("provider", "env")
+    store_kwargs: Dict[str, str] = {}
+    if provider_type == "file" and secrets_section.get("path"):
+        store_kwargs["path"] = secrets_section["path"]
+
+    store = SecretStore(provider_type=provider_type, **store_kwargs)
+    strict = secrets_section.get("strict", False)
+
+    logger.info(
+        "Resolving %d secret reference(s) via '%s' provider.",
+        len(refs),
+        provider_type,
+    )
+    try:
+        return resolve_secrets(raw_data, store, strict=strict)
+    except Exception as exc:
+        raise ConfigurationError(f"Secret resolution failed: {exc}") from exc
+
+
 # ── Public API ───────────────────────────────────────────────────────────
 
 
@@ -145,6 +186,9 @@ def load_and_validate_config(cfg_fpath: str) -> Dict[str, Dict[str, Any]]:
 
     # ── Env var expansion (before validation) ────────────────────────
     raw_data = expand_env_vars(raw_data)
+
+    # ── Secret resolution (before validation) ────────────────────────
+    raw_data = _maybe_resolve_secrets(raw_data)
 
     # ── Pydantic validation (collects ALL errors) ────────────────────
     try:
@@ -187,6 +231,8 @@ def load_sentinel_config(cfg_fpath: str) -> SentinelConfig:
     raw_data = _read_config_file(cfg_fpath)
 
     raw_data = expand_env_vars(raw_data)
+
+    raw_data = _maybe_resolve_secrets(raw_data)
 
     try:
         return SentinelConfig.model_validate(raw_data)

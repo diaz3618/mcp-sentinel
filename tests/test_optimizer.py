@@ -1,4 +1,4 @@
-"""Tests for the optimizer module (Task 3.1)."""
+"""Tests for the optimizer module"""
 
 from __future__ import annotations
 

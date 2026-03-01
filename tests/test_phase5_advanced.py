@@ -1,5 +1,4 @@
-"""Phase 5 tests — Composite Workflows, Elicitation, Version Drift, Skills.
-
+"""
 Covers:
   5.1  Workflow DSL, executor, composite tool
   5.2  Elicitation bridge
