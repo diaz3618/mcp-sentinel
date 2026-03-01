@@ -169,7 +169,9 @@ class OptimizerPanel(Widget):
             app = self.app
             caps = getattr(app, "_last_caps", None)
             if caps is None:
-                self.app.notify("No capabilities cached — connect to a server first", severity="warning")
+                self.app.notify(
+                    "No capabilities cached — connect to a server first", severity="warning"
+                )
                 return
 
             q = query.lower()

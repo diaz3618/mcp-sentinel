@@ -212,8 +212,7 @@ class WorkflowsPanel(Widget):
                 table.add_row(name, str(step_count), str(last_run), status_display)
 
             summary = (
-                f"Workflows: {len(workflows)}  │  "
-                f"Running: {running}  │  Completed: {completed}"
+                f"Workflows: {len(workflows)}  │  " f"Running: {running}  │  Completed: {completed}"
             )
             self.query_one("#wf-status", Static).update(summary)
         except Exception:

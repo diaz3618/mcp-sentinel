@@ -809,9 +809,7 @@ class SentinelApp(App):
         try:
             mgr = self._server_manager
             if mgr is not None:
-                backends_running = sum(
-                    1 for e in mgr.entries.values() if e.connected
-                )
+                backends_running = sum(1 for e in mgr.entries.values() if e.connected)
         except Exception:
             pass
 
@@ -830,6 +828,7 @@ class SentinelApp(App):
             else:
                 # save-and-exit: just save settings and exit
                 from mcp_sentinel.tui.settings import load_settings, save_settings
+
                 settings = load_settings()
                 settings["theme"] = self.theme or "textual-dark"
                 save_settings(settings)
@@ -851,6 +850,7 @@ class SentinelApp(App):
                 except Exception as exc:
                     logger.warning("Shutdown request failed: %s", exc)
         from mcp_sentinel.tui.settings import load_settings, save_settings
+
         settings = load_settings()
         settings["theme"] = self.theme or "textual-dark"
         save_settings(settings)

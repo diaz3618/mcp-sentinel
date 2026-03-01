@@ -1,6 +1,6 @@
 """MCP Server Registry — client, models, and cache.
 
-Provides a read-only client for the MCP Registry API v0.1 and 
+Provides a read-only client for the MCP Registry API v0.1 and
 a local JSON file cache for offline/fallback usage.
 """
 

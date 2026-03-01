@@ -90,7 +90,9 @@ class ServerGroupsWidget(Widget):
                 for member_name in members:
                     b = backend_map.get(member_name, {})
                     phase = b.get("phase", "unknown").lower()
-                    tools = b.get("capabilities", {}).get("tools", 0) if b.get("capabilities") else "?"
+                    tools = (
+                        b.get("capabilities", {}).get("tools", 0) if b.get("capabilities") else "?"
+                    )
                     transport = b.get("type", "?")
 
                     if phase == "ready":

@@ -125,25 +125,30 @@ class ToolsScreen(SentinelScreen):
         # Filter each category
         base_tools = self._get_base_tools()
         filtered_tools = [
-            t for t in base_tools
+            t
+            for t in base_tools
             if query in (t.get("name", "") or "").lower()
             or query in (t.get("description", "") or "").lower()
             or query in (t.get("original_name", "") or "").lower()
         ]
         filtered_resources = [
-            r for r in self._cached_resources
+            r
+            for r in self._cached_resources
             if query in (r.get("name", "") or "").lower()
             or query in (r.get("uri", "") or "").lower()
             or query in (r.get("description", "") or "").lower()
         ]
         filtered_prompts = [
-            p for p in self._cached_prompts
+            p
+            for p in self._cached_prompts
             if query in (p.get("name", "") or "").lower()
             or query in (p.get("description", "") or "").lower()
         ]
         try:
             cap = self.query_one("#tools-cap-section", CapabilitySection)
-            cap.populate(filtered_tools, filtered_resources, filtered_prompts, self._cached_route_map)
+            cap.populate(
+                filtered_tools, filtered_resources, filtered_prompts, self._cached_route_map
+            )
         except Exception:
             pass
         self._update_status_bar(filtered_tools)

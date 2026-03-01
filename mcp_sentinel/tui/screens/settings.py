@@ -42,6 +42,7 @@ def _ensure_panel_imports() -> None:
     _PANEL_IMPORTS_DONE = True
     # Imports are done at call-site in compose_content for tab panes.
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -205,6 +206,7 @@ class SettingsScreen(SentinelScreen):
             # ── Middleware (#16) ─────────────────────────────────────
             with TabPane("Middleware", id="tab-middleware"):
                 from mcp_sentinel.tui.widgets.middleware_panel import MiddlewarePipelineWidget
+
                 yield MiddlewarePipelineWidget(id="mw-pipeline-widget")
 
             # ── Registries (#25) ─────────────────────────────────────
@@ -589,6 +591,7 @@ class SettingsScreen(SentinelScreen):
             viewer = self.query_one("#config-viewer", TextArea)
             text = viewer.text
             import json
+
             json.loads(text)
             self._set_text("#config-validation-result", "[green]✓ Valid JSON[/green]")
         except _json.JSONDecodeError as exc:
@@ -616,6 +619,7 @@ class SettingsScreen(SentinelScreen):
             viewer = self.query_one("#registries-viewer", TextArea)
             # Read from settings
             from mcp_sentinel.tui.settings import load_settings
+
             settings = load_settings()
             registries = settings.get("registries", [])
             if registries:
@@ -645,14 +649,17 @@ class SettingsScreen(SentinelScreen):
             return
 
         from mcp_sentinel.tui.settings import load_settings, save_settings
+
         settings = load_settings()
         registries = settings.get("registries", [])
-        registries.append({
-            "name": name,
-            "url": url,
-            "priority": int(priority) if priority else 100,
-            "auth": auth or "none",
-        })
+        registries.append(
+            {
+                "name": name,
+                "url": url,
+                "priority": int(priority) if priority else 100,
+                "auth": auth or "none",
+            }
+        )
         settings["registries"] = registries
         save_settings(settings)
         self.notify(f"Added registry '{name}'", title="Registry Added")
@@ -676,6 +683,7 @@ class SettingsScreen(SentinelScreen):
             self.notify("Enter the registry name to remove", severity="warning")
             return
         from mcp_sentinel.tui.settings import load_settings, save_settings
+
         settings = load_settings()
         registries = settings.get("registries", [])
         original_len = len(registries)
@@ -687,4 +695,3 @@ class SettingsScreen(SentinelScreen):
         save_settings(settings)
         self.notify(f"Removed registry '{name}'", title="Registry Removed")
         self._refresh_registries()
-

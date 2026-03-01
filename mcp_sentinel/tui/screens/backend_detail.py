@@ -94,8 +94,10 @@ class BackendDetailModal(ModalScreen[Optional[str]]):
             # Metadata
             transport = b.get("type", "unknown")
             transport_colors = {
-                "stdio": "cyan", "sse": "yellow",
-                "streamable-http": "green", "streamable_http": "green",
+                "stdio": "cyan",
+                "sse": "yellow",
+                "streamable-http": "green",
+                "streamable_http": "green",
             }
             tc = transport_colors.get(transport, "white")
             meta_lines = [
@@ -135,7 +137,11 @@ class BackendDetailModal(ModalScreen[Optional[str]]):
                 h_status = health.get("status", "unknown")
                 latency = health.get("latency_ms")
                 last_check = health.get("last_check", "—")
-                h_color = "green" if h_status == "healthy" else "red" if h_status == "unhealthy" else "yellow"
+                h_color = (
+                    "green"
+                    if h_status == "healthy"
+                    else "red" if h_status == "unhealthy" else "yellow"
+                )
                 h_lines = [
                     f"[b]Health:[/b] [{h_color}]{h_status}[/{h_color}]",
                     f"Latency: {f'{latency:.0f}ms' if latency else '—'}",

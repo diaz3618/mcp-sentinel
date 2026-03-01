@@ -225,14 +225,16 @@ class SkillsScreen(SentinelScreen):
         filtered = self._all_skills
         if query:
             filtered = [
-                s for s in filtered
+                s
+                for s in filtered
                 if query in s.get("name", "").lower()
                 or query in s.get("description", "").lower()
                 or query in s.get("author", "").lower()
             ]
         if cat and cat != "all" and cat != Select.BLANK:
             filtered = [
-                s for s in filtered
+                s
+                for s in filtered
                 if cat in s.get("name", "").lower()
                 or cat in [d.lower() for d in s.get("dependencies", [])]
             ]

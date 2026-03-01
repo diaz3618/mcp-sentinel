@@ -134,13 +134,15 @@ class ClientConfigModal(ModalScreen[Optional[str]]):
         self._detected = []
         for cfg in _CLIENT_CONFIGS:
             expanded = os.path.expanduser(cfg["path"])
-            self._detected.append({
-                "name": cfg["name"],
-                "path": cfg["path"],
-                "expanded_path": expanded,
-                "key": cfg["key"],
-                "exists": Path(expanded).exists(),
-            })
+            self._detected.append(
+                {
+                    "name": cfg["name"],
+                    "path": cfg["path"],
+                    "expanded_path": expanded,
+                    "key": cfg["key"],
+                    "exists": Path(expanded).exists(),
+                }
+            )
 
     def _generate_config(self, client: Dict[str, Any]) -> str:
         """Generate the MCP config snippet for a client."""
@@ -222,6 +224,7 @@ class ClientConfigModal(ModalScreen[Optional[str]]):
         # Textual doesn't have native clipboard; copy via app
         try:
             import subprocess
+
             proc = subprocess.run(
                 ["xclip", "-selection", "clipboard"],
                 input=snippet.encode(),

@@ -180,4 +180,3 @@ class BackendStatusWidget(Widget):
 
     def watch_backend_details(self) -> None:
         self._refresh_display()
-

@@ -61,9 +61,7 @@ class RegistryScreen(SentinelScreen):
         """Kick off async registry fetch."""
         self._cache = RegistryCache()
         self._clients: List[RegistryClient] = []
-        self._load_task: asyncio.Task[None] | None = asyncio.create_task(
-            self._load_registry()
-        )
+        self._load_task: asyncio.Task[None] | None = asyncio.create_task(self._load_registry())
 
     async def _load_registry(self) -> None:
         """Fetch servers from all configured registries."""
@@ -128,9 +126,7 @@ class RegistryScreen(SentinelScreen):
             try:
                 sentinel_cfg = getattr(self.app, "_sentinel_config", None)
                 if sentinel_cfg is not None:
-                    sorted_regs = sorted(
-                        sentinel_cfg.registries, key=lambda r: r.priority
-                    )
+                    sorted_regs = sorted(sentinel_cfg.registries, key=lambda r: r.priority)
                     urls = [r.url for r in sorted_regs]
             except Exception:
                 logger.debug("Could not read registries from config", exc_info=True)

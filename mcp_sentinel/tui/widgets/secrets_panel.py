@@ -180,7 +180,9 @@ class SecretEditorModal(ModalScreen[Optional[Dict[str, str]]]):
                         ("env", "env"),
                         ("1password", "1password"),
                     ],
-                    value=self._existing.get("source", "encrypted") if self._existing else "encrypted",
+                    value=(
+                        self._existing.get("source", "encrypted") if self._existing else "encrypted"
+                    ),
                     id="se-source-select",
                     allow_blank=False,
                 )

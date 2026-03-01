@@ -131,9 +131,7 @@ async def _run_server(
     try:
         _probe.bind((host, port))
     except OSError as e_bind:
-        module_logger.error(
-            "Port %s on %s is already in use: %s", port, host, e_bind
-        )
+        module_logger.error("Port %s on %s is already in use: %s", port, host, e_bind)
         print(
             f"\n❌ Error: Port {port} on {host} is already in use.\n"
             f"   Release the port or choose a different one with --port.\n"
@@ -154,7 +152,12 @@ async def _run_server(
         module_logger.info("%s has shut down or is shutting down.", SERVER_NAME)
 
 
-def _write_pid_file(session_name: str = "default", host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, config: str = "") -> None:
+def _write_pid_file(
+    session_name: str = "default",
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
+    config: str = "",
+) -> None:
     """Write session metadata via the sessions module (+ legacy PID file)."""
     from mcp_sentinel.sessions import SessionInfo, save_session
 
@@ -513,14 +516,9 @@ def _cmd_tui(args: argparse.Namespace) -> None:
             pass  # fall through — use defaults
 
     # CLI flag → env var → config.yaml → default
-    token: Optional[str] = (
-        args.token
-        or os.environ.get("SENTINEL_MGMT_TOKEN")
-        or client_cfg.token
-    )
+    token: Optional[str] = args.token or os.environ.get("SENTINEL_MGMT_TOKEN") or client_cfg.token
     servers_config: Optional[str] = (
-        getattr(args, "servers_config", None)
-        or client_cfg.servers_config
+        getattr(args, "servers_config", None) or client_cfg.servers_config
     )
 
     _saved_termios = None
@@ -542,9 +540,7 @@ def _cmd_tui(args: argparse.Namespace) -> None:
         if raw_server == default_url_str:
             # Flag was not explicitly provided — check env / config
             raw_server = (
-                os.environ.get("SENTINEL_TUI_SERVER")
-                or client_cfg.server_url
-                or default_url_str
+                os.environ.get("SENTINEL_TUI_SERVER") or client_cfg.server_url or default_url_str
             )
         clean_server: str = _normalise_server_url(raw_server) or raw_server
 
@@ -720,10 +716,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         metavar="PATH",
-        help=(
-            "Path to configuration file (YAML). "
-            "Default: auto-detect config.yaml/config.yml"
-        ),
+        help=("Path to configuration file (YAML). " "Default: auto-detect config.yaml/config.yml"),
     )
     sp_server.add_argument(
         "-d",

@@ -117,7 +117,8 @@ class NetworkIsolationPanel(Widget):
             result["network_mode"] = self.query_one("#net-mode-select", Select).value
             hosts_text = self.query_one("#net-hosts-area", TextArea).text
             result["allowed_hosts"] = [
-                h.strip() for h in hosts_text.splitlines()
+                h.strip()
+                for h in hosts_text.splitlines()
                 if h.strip() and not h.strip().startswith("#")
             ]
             result["http_proxy"] = self.query_one("#net-proxy-input", Input).value

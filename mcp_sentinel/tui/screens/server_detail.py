@@ -78,8 +78,11 @@ class ServerDetailModal(ModalScreen[Optional[Dict[str, Any]]]):
         entry = self._entry
         with Vertical(id="server-detail-dialog"):
             yield Label(
-                f"[b]{entry.name}[/b]  v{entry.version}" if entry.version
-                else f"[b]{entry.name}[/b]",
+                (
+                    f"[b]{entry.name}[/b]  v{entry.version}"
+                    if entry.version
+                    else f"[b]{entry.name}[/b]"
+                ),
                 id="server-detail-title",
             )
 
@@ -143,7 +146,9 @@ class ServerDetailModal(ModalScreen[Optional[Dict[str, Any]]]):
             table.add_columns("Name", "Description")
             table.cursor_type = "row"
             for tool in self._entry.tools:
-                desc = tool.description[:60] + "…" if len(tool.description) > 60 else tool.description
+                desc = (
+                    tool.description[:60] + "…" if len(tool.description) > 60 else tool.description
+                )
                 table.add_row(tool.name, desc, key=tool.name)
         except Exception:
             pass

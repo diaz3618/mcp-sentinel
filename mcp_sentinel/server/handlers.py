@@ -27,9 +27,7 @@ async def _dispatch(
     """Route a request through the middleware chain."""
     chain = getattr(mcp_server, "middleware_chain", None)
     if chain is None:
-        raise RuntimeError(
-            "Middleware chain is not initialised on the MCP server instance."
-        )
+        raise RuntimeError("Middleware chain is not initialised on the MCP server instance.")
     ctx = RequestContext(
         capability_name=cap_name,
         mcp_method=mcp_method,
@@ -147,9 +145,11 @@ def register_handlers(mcp_server: McpServer) -> None:
                     return [
                         mcp_types.TextContent(
                             type="text",
-                            text=json.dumps(output, indent=2)
-                            if not isinstance(output, str)
-                            else output,
+                            text=(
+                                json.dumps(output, indent=2)
+                                if not isinstance(output, str)
+                                else output
+                            ),
                         )
                     ]
                 except Exception as exc:

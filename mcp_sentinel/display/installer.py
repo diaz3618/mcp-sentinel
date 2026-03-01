@@ -28,17 +28,19 @@ from rich.text import Text
 
 # ── Phase enum (display-side, decoupled from runtime) ────────────────────
 
+
 class DisplayPhase(str, Enum):
     PENDING = "pending"
     INITIALIZING = "initializing"
-    DOWNLOADING = "downloading"     # docker pull / npm install
-    RETRYING = "retrying"           # automatic retry after failure
+    DOWNLOADING = "downloading"  # docker pull / npm install
+    RETRYING = "retrying"  # automatic retry after failure
     READY = "ready"
     FAILED = "failed"
     SKIPPED = "skipped"
 
 
 # ── Runtime detection ────────────────────────────────────────────────────
+
 
 class RuntimeKind(str, Enum):
     UVX = "uvx"
@@ -82,11 +84,16 @@ def detect_runtime(backend_conf: Dict[str, Any]) -> RuntimeKind:
 
 # ── Style configuration per runtime ─────────────────────────────────────
 
+
 class _RuntimeStyle:
     """Rich style palette for a specific runtime kind."""
 
     __slots__ = (
-        "spinner_style", "name_style", "status_style", "tag_style", "label",
+        "spinner_style",
+        "name_style",
+        "status_style",
+        "tag_style",
+        "label",
     )
 
     def __init__(
@@ -164,6 +171,7 @@ _STYLES: Dict[RuntimeKind, _RuntimeStyle] = {
 
 # ── Custom Rich column: status-aware spinner ────────────────────────────
 
+
 class _StatusSpinnerColumn(ProgressColumn):
     """Spinner that shows animated dots while running, then a result icon.
 
@@ -194,6 +202,7 @@ class _StatusSpinnerColumn(ProgressColumn):
 
 # ── Custom Rich column: coloured backend name + tag ─────────────────────
 
+
 class _ColouredDescColumn(ProgressColumn):
     """Renders ``Connecting <name> (<tag>): `` with per-task Rich styles."""
 
@@ -214,6 +223,7 @@ class _ColouredDescColumn(ProgressColumn):
 
 # ── Custom Rich column: phase status text ───────────────────────────────
 
+
 class _StatusTextColumn(ProgressColumn):
     """Renders the current phase message (Pending / Initializing / Ready)."""
 
@@ -225,6 +235,7 @@ class _StatusTextColumn(ProgressColumn):
 
 
 # ── Backend display entry ────────────────────────────────────────────────
+
 
 class _BackendEntry:
     """Tracks state for one backend in the Rich progress table."""
@@ -242,6 +253,7 @@ class _BackendEntry:
 
 
 # ── Main display class ──────────────────────────────────────────────────
+
 
 class InstallerDisplay:
     """Progress display for MCP backend connections.
@@ -304,9 +316,7 @@ class InstallerDisplay:
             parts.append(f"{other_count} other")
 
         summary = ", ".join(parts)
-        self._console.print(
-            f"\n[bold]Backend operations:[/bold] {total} connections ({summary})\n"
-        )
+        self._console.print(f"\n[bold]Backend operations:[/bold] {total} connections ({summary})\n")
 
         # Build the Rich Progress display with custom columns
         self._progress = Progress(
@@ -337,7 +347,7 @@ class InstallerDisplay:
                 tag_style=style.tag_style,
                 status_msg="Pending...",
                 current_status_style=style.status_style,
-                result_icon="\u2713",           # ✓
+                result_icon="\u2713",  # ✓
                 result_style="bold bright_green",
             )
             entry.task_id = task_id
@@ -368,10 +378,10 @@ class InstallerDisplay:
         if entry.phase == DisplayPhase.READY:
             self._progress.update(
                 entry.task_id,
-                completed=1,                     # marks task finished → spinner stops
+                completed=1,  # marks task finished → spinner stops
                 status_msg="Ready",
                 current_status_style="green",
-                result_icon="\u2713",            # ✓
+                result_icon="\u2713",  # ✓
                 result_style="bold bright_green",
             )
         elif entry.phase == DisplayPhase.FAILED:
@@ -381,7 +391,7 @@ class InstallerDisplay:
                 completed=1,
                 status_msg=msg,
                 current_status_style="red",
-                result_icon="\u2717",            # ✗
+                result_icon="\u2717",  # ✗
                 result_style="bold red",
             )
         elif entry.phase == DisplayPhase.DOWNLOADING:
@@ -457,6 +467,8 @@ class InstallerDisplay:
 
         Signature: ``callback(name, phase, message=None)``
         """
+
         def _cb(name: str, phase: str, message: str | None = None) -> None:
             self.update(name, phase=phase, message=message)
+
         return _cb

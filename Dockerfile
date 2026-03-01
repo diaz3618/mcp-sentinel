@@ -60,9 +60,11 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip in the builder venv to patch CVE-2026-1703
+# Upgrade system pip to patch CVE-2026-1703
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copy the pre-built virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
-RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip
 
 # Put the venv on PATH
 ENV PATH="/opt/venv/bin:$PATH" \

@@ -137,7 +137,9 @@ class OTelPanel(Widget):
                 avg_ms = b.get("avg_latency_ms", 0)
                 err_pct = b.get("error_percent", 0)
                 health = b.get("health", {})
-                health_status = health.get("status", "unknown") if isinstance(health, dict) else str(health)
+                health_status = (
+                    health.get("status", "unknown") if isinstance(health, dict) else str(health)
+                )
 
                 if health_status == "healthy":
                     health_display = "[green]●[/green]"

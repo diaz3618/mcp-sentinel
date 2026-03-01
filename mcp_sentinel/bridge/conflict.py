@@ -5,9 +5,9 @@ these strategies determine how MCP Sentinel handles the collision.
 
 Strategies:
     - **first-wins**: Keep the first registered capability; ignore duplicates.
-    - **prefix**: Prefix *all* capability names with the server name, 
+    - **prefix**: Prefix *all* capability names with the server name,
       preventing conflicts entirely.
-    - **priority**: Highest-priority server wins; unprioritised backends 
+    - **priority**: Highest-priority server wins; unprioritised backends
       fall back to prefix.
     - **error**: Raise :class:`CapabilityConflictError` on any conflict.
 """

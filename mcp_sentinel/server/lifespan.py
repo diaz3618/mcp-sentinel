@@ -59,9 +59,7 @@ def _discover_workflow_yamls() -> list[dict]:
                         data.setdefault("_source", str(fpath))
                         results.append(data)
                 except Exception:
-                    logger.debug(
-                        "Failed to parse workflow YAML: %s", fpath, exc_info=True
-                    )
+                    logger.debug("Failed to parse workflow YAML: %s", fpath, exc_info=True)
     return results
 
 
@@ -274,8 +272,7 @@ async def app_lifespan(app: Starlette) -> AsyncIterator[None]:
             except Exception:
                 # Non-fatal — fall back to normal (non-verbose) output
                 logger.debug(
-                    "Could not initialise installer display; "
-                    "falling back to standard output.",
+                    "Could not initialise installer display; " "falling back to standard output.",
                     exc_info=True,
                 )
                 installer_display = None

@@ -1,5 +1,8 @@
 # MCP Sentinel
 
+[![Docker Hub Pulls](https://img.shields.io/docker/pulls/diaz3618/mcp-sentinel?logo=docker&label=Docker%20Hub%20pulls)](https://hub.docker.com/r/diaz3618/mcp-sentinel)
+[![GHCR Pulls](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fdiaz3618%2Fmcp-sentinel&query=%24.downloadCount&label=GHCR%20pulls&logo=github)](https://ghcr.io/diaz3618/mcp-sentinel)
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for more details.
@@ -31,7 +34,7 @@ Alternatively, run with **Docker** — see the [Docker usage guide](docs/docker.
 1. **Clone Repository**
 
     ```bash
-    git clone <repo-url>
+    git clone https://github.com/diaz3618/mcp-sentinel.git
     cd mcp-sentinel
     ```
 

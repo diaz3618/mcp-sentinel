@@ -520,9 +520,7 @@ class ClientManager:
         if failed_names:
             # Determine the global retry params (use the max across all
             # failed backends so every one gets its configured chances).
-            max_retries = max(
-                config_data[n].get("retries", BACKEND_RETRIES) for n in failed_names
-            )
+            max_retries = max(config_data[n].get("retries", BACKEND_RETRIES) for n in failed_names)
             logger.info(
                 "%d backend(s) failed on first attempt — will retry up to %d time(s): %s",
                 len(failed_names),
@@ -536,8 +534,7 @@ class ClientManager:
 
                 # Per-backend delay (use the max among remaining failures)
                 delay = max(
-                    config_data[n].get("retry_delay", BACKEND_RETRY_DELAY)
-                    for n in failed_names
+                    config_data[n].get("retry_delay", BACKEND_RETRY_DELAY) for n in failed_names
                 )
                 logger.info(
                     "Retry attempt %d/%d — waiting %.1fs before retrying %d backend(s)...",
@@ -603,9 +600,7 @@ class ClientManager:
                             )
 
                 # Refresh the failed list for next iteration
-                failed_names = [
-                    n for n in failed_names if n not in self._sessions
-                ]
+                failed_names = [n for n in failed_names if n not in self._sessions]
 
         self._pending_tasks.clear()
 

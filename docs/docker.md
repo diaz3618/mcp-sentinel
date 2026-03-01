@@ -102,7 +102,7 @@ docker run --rm -it \
 
 ## Docker Compose
 
-A minimal `docker-compose.yml` for running the server:
+`docker-compose.yml` for running the server:
 
 ```yaml
 services:

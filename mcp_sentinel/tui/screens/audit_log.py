@@ -44,17 +44,25 @@ class AuditLogScreen(SentinelScreen):
             with Horizontal(id="audit-filter-bar"):
                 yield Label("Filter:", classes="setting-label")
                 yield Select(
-                    [("All", "all"), ("tools/call", "tools/call"),
-                     ("tools/list", "tools/list"), ("resources/read", "resources/read"),
-                     ("prompts/get", "prompts/get"), ("denied", "denied")],
+                    [
+                        ("All", "all"),
+                        ("tools/call", "tools/call"),
+                        ("tools/list", "tools/list"),
+                        ("resources/read", "resources/read"),
+                        ("prompts/get", "prompts/get"),
+                        ("denied", "denied"),
+                    ],
                     value="all",
                     id="audit-method-filter",
                     allow_blank=False,
                 )
                 yield Input(placeholder="User…", id="audit-user-filter")
                 yield Input(placeholder="Server…", id="audit-server-filter")
-                yield Button("⏸ Pause" if not self._paused else "▶ Resume",
-                             id="btn-audit-pause", variant="default")
+                yield Button(
+                    "⏸ Pause" if not self._paused else "▶ Resume",
+                    id="btn-audit-pause",
+                    variant="default",
+                )
 
             yield DataTable(id="audit-table")
 
@@ -79,10 +87,7 @@ class AuditLogScreen(SentinelScreen):
         events = getattr(app, "_last_events", None)
         if events is not None:
             event_list = getattr(events, "events", [])
-            self._events = [
-                e.model_dump() if hasattr(e, "model_dump") else e
-                for e in event_list
-            ]
+            self._events = [e.model_dump() if hasattr(e, "model_dump") else e for e in event_list]
         self._refresh_table()
 
     def _refresh_table(self) -> None:
@@ -144,8 +149,11 @@ class AuditLogScreen(SentinelScreen):
         # Server filter
         if self._filter_server:
             q = self._filter_server.lower()
-            result = [e for e in result
-                      if q in (e.get("server", "") or e.get("backend", "") or "").lower()]
+            result = [
+                e
+                for e in result
+                if q in (e.get("server", "") or e.get("backend", "") or "").lower()
+            ]
 
         return result
 
@@ -203,6 +211,8 @@ class AuditLogScreen(SentinelScreen):
             path = "audit_export.json"
             with open(path, "w") as f:
                 _json.dump(filtered, f, indent=2, default=str)
-            self.notify(f"Exported {len(filtered)} events to {path}", title="Export", severity="information")
+            self.notify(
+                f"Exported {len(filtered)} events to {path}", title="Export", severity="information"
+            )
         except Exception as exc:
             self.notify(f"Export failed: {exc}", title="Error", severity="error")
