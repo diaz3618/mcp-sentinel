@@ -27,9 +27,45 @@ The project has a **server/client architecture**:
 
 ## Installation and Setup
 
-Requires Python 3.10+. Using `uv` for environment management is recommended.
+Requires Python 3.10+.
 
-Alternatively, run with **Docker** — see the [Docker usage guide](docs/docker.md).
+### From PyPI
+
+**`uv tool install`** — fastest, isolated environment, auto-managed (recommended):
+
+```bash
+uv tool install argus-mcp
+```
+
+**`pipx`** — same isolation concept, more established:
+
+```bash
+pipx install argus-mcp
+```
+
+**`pip`** — installs into the current environment:
+
+```bash
+pip install argus-mcp
+```
+
+> **Quick try:** Run without installing using `uv run argus-mcp --help`
+
+After installing, verify with:
+
+```bash
+argus-mcp --help
+```
+
+### From Docker
+
+See the [Docker usage guide](docs/docker.md).
+
+```bash
+docker run --rm diaz3618/argus-mcp:latest --help
+```
+
+### From Source
 
 1. **Clone Repository**
 
@@ -61,14 +97,16 @@ argus-mcp --help
 ```
 
 ```text
-usage: argus-mcp [-h] {server,tui,secret} ...
+usage: argus-mcp [-h] {server,stop,status,tui,secret} ...
 
-Argus MCP v0.5.0
+Argus MCP v0.6.0
 
 positional arguments:
-  {server,tui,secret}
-    server       Run the headless Argus MCP server (Uvicorn + MCP bridge)
-    tui          Launch the Textual TUI connected to a running Argus MCP server
+  {server,stop,status,tui,secret}
+    server       Run the headless Argus server (Uvicorn + MCP bridge)
+    stop         Stop a detached Argus server
+    status       List all running Argus server sessions
+    tui          Launch the Textual TUI connected to a running Argus server
     secret       Manage encrypted secrets (set, get, list, delete)
 
 options:
