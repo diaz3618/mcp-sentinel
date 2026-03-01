@@ -72,3 +72,10 @@ jobs:
           generateReleaseNotes: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # GITHUB_TOKEN releases do not trigger other workflows (anti-loop).
+      # Explicitly dispatch publish.yml so PyPI publishing is automatic.
+      - name: Trigger PyPI publish
+        run: gh workflow run publish.yml --ref "${{ github.ref }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
