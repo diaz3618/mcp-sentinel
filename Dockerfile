@@ -54,12 +54,15 @@ RUN apt-get update && \
         ca-certificates && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
+    npm install -g npm@latest && \
+    npm cache clean --force && \
     apt-get purge -y curl && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the pre-built virtual environment from builder
+# Upgrade pip in the builder venv to patch CVE-2026-1703
 COPY --from=builder /opt/venv /opt/venv
+RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip
 
 # Put the venv on PATH
 ENV PATH="/opt/venv/bin:$PATH" \

@@ -154,7 +154,7 @@ def load_workflow_yaml(path: str) -> WorkflowDefinition:
     Requires ``pyyaml``.
     """
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
     except ImportError as exc:
         raise RuntimeError("pyyaml is required for YAML workflows: pip install pyyaml") from exc
 

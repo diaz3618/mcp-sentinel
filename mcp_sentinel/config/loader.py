@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Any, Dict, List
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from mcp import StdioServerParameters
 from pydantic import ValidationError
 

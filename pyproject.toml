@@ -11,10 +11,11 @@ requires-python = ">=3.10"
 license = "GPL-3.0-only"
 authors = [{ name = "Daniel Diaz Santiago" }]
 dependencies = [
-    "mcp>=1.6.0",
+    "mcp>=1.23.0",
     "pydantic>=2.0.0",
+    "python-multipart>=0.0.22",
     "pyyaml>=6.0",
-    "starlette>=0.27.0",
+    "starlette>=0.47.2",
     "uvicorn[standard]>=0.23.0",
     "httpx>=0.24.0",
     "textual>=1.0.0",
@@ -32,6 +33,7 @@ dev = [
     "mypy>=1.17.1",
     "ruff>=0.14.13",
     "textual-dev>=1.0.0",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 
 [tool.black]
@@ -48,8 +50,6 @@ exclude = '''
   | img
   | internal
   | memory-bank
-  | reports
-  | repos
 )/
 '''
 
@@ -65,8 +65,6 @@ extend-exclude = [
     "img",
     "internal",
     "memory-bank",
-    "reports",
-    "repos",
 ]
 
 [tool.ruff.lint]
@@ -81,7 +79,7 @@ files = [
     "mcp_sentinel/",
     "mods/*.py",
 ]
-exclude = "(^repos/|^logs/|^img/|^internal/|^memory-bank/|^reports/|^\\.venv/|^__pycache__/)"
+exclude = "(^logs/|^img/|^internal/|^memory-bank/|^\\.venv/|^__pycache__/)"
 pretty = true
 show_error_codes = true
 warn_unused_configs = true
