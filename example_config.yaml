@@ -1,4 +1,4 @@
-# MCP Sentinel — Example Configuration
+# Argus MCP — Example Configuration
 # Copy this file to config.yaml and edit to match your setup.
 # Documentation: docs/configuration.md
 #
@@ -15,17 +15,17 @@ server:
   transport: streamable-http         # "sse" or "streamable-http"
   management:
     enabled: true
-    token: "${SENTINEL_MGMT_TOKEN}" # Bearer token for /manage/v1/ endpoints
+    token: "${ARGUS_MGMT_TOKEN}" # Bearer token for /manage/v1/ endpoints
 
 # ── Client / TUI Settings ────────────────────────────────────────────────
-# Settings used by ``mcp-sentinel tui`` and _dev_launch.py.
+# Settings used by ``argus-mcp tui`` and _dev_launch.py.
 # CLI flags take precedence over these values.
 client:
-  server_url: "http://127.0.0.1:9000"  # Sentinel server URL the TUI connects to
-  # token: "${SENTINEL_MGMT_TOKEN}"    # Bearer token for management API
+  server_url: "http://127.0.0.1:9000"  # Argus server URL the TUI connects to
+  # token: "${ARGUS_MGMT_TOKEN}"    # Bearer token for management API
   theme: "textual-dark"                 # Default TUI theme
   poll_interval: 2.0                    # Status polling interval (seconds, 0.5–60)
-  # servers_config: "~/.config/mcp-sentinel/servers.json"  # Multi-server config
+  # servers_config: "~/.config/argus-mcp/servers.json"  # Multi-server config
 
 # ── Backend MCP Servers ──────────────────────────────────────────────────
 backends:
@@ -100,7 +100,7 @@ optimizer:
 telemetry:
   enabled: false                    # enable OTel tracing and metrics
   otlp_endpoint: "http://localhost:4317"  # OTLP collector endpoint
-  service_name: "mcp-sentinel"      # service name in traces
+  service_name: "argus-mcp"      # service name in traces
 
 # ── Secrets Management ───────────────────────────────────────────────────
 secrets:
@@ -139,7 +139,7 @@ incoming_auth:
   # token: "${MCP_AUTH_TOKEN}"      # for "local" type
   # jwks_uri: "https://..."        # for "jwt" type
   # issuer: "https://..."          # for "jwt"/"oidc" type
-  # audience: "mcp-sentinel"       # expected JWT audience
+  # audience: "argus-mcp"       # expected JWT audience
   # algorithms: ["RS256", "ES256"]
 
 # ── Authorization (RBAC) ────────────────────────────────────────────────

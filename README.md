@@ -1,7 +1,7 @@
-# MCP Sentinel
+# Argus MCP
 
-[![Docker Hub Pulls](https://img.shields.io/docker/pulls/diaz3618/mcp-sentinel?logo=docker&label=Docker%20Hub%20pulls)](https://hub.docker.com/r/diaz3618/mcp-sentinel)
-[![GHCR Pulls](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fdiaz3618%2Fmcp-sentinel&query=%24.downloadCount&label=GHCR%20pulls&logo=github)](https://ghcr.io/diaz3618/mcp-sentinel)
+[![Docker Hub Pulls](https://img.shields.io/docker/pulls/diaz3618/argus-mcp?logo=docker&label=Docker%20Hub%20pulls)](https://hub.docker.com/r/diaz3618/argus-mcp)
+[![GHCR Pulls](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fdiaz3618%2Fargus-mcp&query=%24.downloadCount&label=GHCR%20pulls&logo=github)](https://ghcr.io/diaz3618/argus-mcp)
 
 ## License
 
@@ -9,20 +9,20 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Project Overview
 
-MCP Sentinel is a **central gateway and management platform** for MCP (Model Context Protocol) servers. It connects to and aggregates capabilities from multiple backend MCP servers (stdio, SSE, or streamable-HTTP) and exposes them to upstream MCP clients through **SSE** (`/sse`) and **Streamable HTTP** (`/mcp`) transports.
+Argus MCP is a **central gateway and management platform** for MCP (Model Context Protocol) servers. It connects to and aggregates capabilities from multiple backend MCP servers (stdio, SSE, or streamable-HTTP) and exposes them to upstream MCP clients through **SSE** (`/sse`) and **Streamable HTTP** (`/mcp`) transports.
 
 The project has a **server/client architecture**:
 
-- **`mcp-sentinel server`** — Headless server that runs the MCP bridge, management API, and transports.
-- **`mcp-sentinel tui`** — Textual-based terminal UI that connects to a running server over HTTP.
-- **`mcp-sentinel secret`** — Manage encrypted secrets (set, get, list, delete).
+- **`argus-mcp server`** — Headless server that runs the MCP bridge, management API, and transports.
+- **`argus-mcp tui`** — Textual-based terminal UI that connects to a running server over HTTP.
+- **`argus-mcp secret`** — Manage encrypted secrets (set, get, list, delete).
 
 **Core Advantages:**
 
-1. **Simplified Client Configuration:** MCP clients connect to one MCP Sentinel address to access all backend services.
+1. **Simplified Client Configuration:** MCP clients connect to one Argus MCP address to access all backend services.
 2. **Capability Aggregation:** Aggregates MCP tools, resources, and prompts from multiple sources into a single endpoint.
 3. **Management API:** RESTful API at `/manage/v1/` for runtime inspection and control of backend services.
-4. **Multi-Server TUI:** Connect the TUI to multiple Sentinel servers simultaneously and switch between them.
+4. **Multi-Server TUI:** Connect the TUI to multiple Argus MCP servers simultaneously and switch between them.
 5. **Security:** JWT/OIDC authentication, RBAC authorization, encrypted secret storage, and log redaction.
 
 ## Installation and Setup
@@ -34,8 +34,8 @@ Alternatively, run with **Docker** — see the [Docker usage guide](docs/docker.
 1. **Clone Repository**
 
     ```bash
-    git clone https://github.com/diaz3618/mcp-sentinel.git
-    cd mcp-sentinel
+    git clone https://github.com/diaz3618/argus-mcp.git
+    cd argus-mcp
     ```
 
 2. **Create and Activate Virtual Environment**
@@ -57,18 +57,18 @@ Alternatively, run with **Docker** — see the [Docker usage guide](docs/docker.
 ### View Help
 
 ```bash
-mcp-sentinel --help
+argus-mcp --help
 ```
 
 ```text
-usage: mcp-sentinel [-h] {server,tui,secret} ...
+usage: argus-mcp [-h] {server,tui,secret} ...
 
-MCP Sentinel v0.5.0
+Argus MCP v0.5.0
 
 positional arguments:
   {server,tui,secret}
-    server       Run the headless Sentinel server (Uvicorn + MCP bridge)
-    tui          Launch the Textual TUI connected to a running Sentinel server
+    server       Run the headless Argus MCP server (Uvicorn + MCP bridge)
+    tui          Launch the Textual TUI connected to a running Argus MCP server
     secret       Manage encrypted secrets (set, get, list, delete)
 
 options:
@@ -79,16 +79,16 @@ options:
 
 ```bash
 # Default: listen on 127.0.0.1:9000, auto-detect config file
-mcp-sentinel server
+argus-mcp server
 
 # Custom host, port, and log level
-mcp-sentinel server --host 0.0.0.0 --port 8080 --log-level debug
+argus-mcp server --host 0.0.0.0 --port 8080 --log-level debug
 
 # Explicit config file
-mcp-sentinel server --config /path/to/config.yaml
+argus-mcp server --config /path/to/config.yaml
 ```
 
-Config file resolution order: `--config` flag → `SENTINEL_CONFIG` env var → auto-detect (`config.yaml` → `config.yml`).
+Config file resolution order: `--config` flag → `ARGUS_CONFIG` env var → auto-detect (`config.yaml` → `config.yml`).
 
 The server exposes:
 
@@ -96,24 +96,24 @@ The server exposes:
 - **Streamable HTTP endpoint** at `http://<host>:<port>/mcp` — for MCP clients using the newer Streamable HTTP transport.
 - **Management API** at `http://<host>:<port>/manage/v1/` — for the TUI and automation.
 
-Set the `SENTINEL_MGMT_TOKEN` environment variable to enable bearer token authentication on the management API.
+Set the `ARGUS_MGMT_TOKEN` environment variable to enable bearer token authentication on the management API.
 
 ### Launch the TUI
 
 ```bash
 # Connect to a local server
-mcp-sentinel tui --server http://127.0.0.1:9000
+argus-mcp tui --server http://127.0.0.1:9000
 
 # With authentication
-mcp-sentinel tui --server http://127.0.0.1:9000 --token YOUR_TOKEN
+argus-mcp tui --server http://127.0.0.1:9000 --token YOUR_TOKEN
 
-# Multi-server mode (uses ~/.config/mcp-sentinel/servers.json)
-mcp-sentinel tui --servers-config /path/to/servers.json
+# Multi-server mode (uses ~/.config/argus-mcp/servers.json)
+argus-mcp tui --servers-config /path/to/servers.json
 ```
 
 ### Multi-Server Configuration
 
-Create a `servers.json` file to manage multiple Sentinel servers:
+Create a `servers.json` file to manage multiple Argus MCP servers:
 
 ```json
 {
@@ -124,7 +124,7 @@ Create a `servers.json` file to manage multiple Sentinel servers:
     },
     {
       "name": "production",
-      "url": "https://sentinel.example.com:9000",
+      "url": "https://argus.example.com:9000",
       "token": "your-production-token"
     }
   ],
@@ -132,7 +132,7 @@ Create a `servers.json` file to manage multiple Sentinel servers:
 }
 ```
 
-Default location: `~/.config/mcp-sentinel/servers.json`
+Default location: `~/.config/argus-mcp/servers.json`
 
 ### MCP Client Connection
 
@@ -166,7 +166,7 @@ server:
   transport: sse                # "sse" or "streamable-http"
   management:
     enabled: true
-    token: "${SENTINEL_MGMT_TOKEN}"
+    token: "${ARGUS_MGMT_TOKEN}"
 
 backends:
   my_stdio_server:
@@ -187,7 +187,7 @@ backends:
 
 ### Backend Types
 
-**stdio** — Local MCP server processes managed by Sentinel.
+**stdio** — Local MCP server processes managed by Argus MCP.
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -235,7 +235,7 @@ All string values support `${VAR_NAME}` syntax for environment variable expansio
 
 ### Secret References
 
-String values can use `secret:name` syntax to resolve values from encrypted storage (see `mcp-sentinel secret`).
+String values can use `secret:name` syntax to resolve values from encrypted storage (see `argus-mcp secret`).
 
 ## Management API
 
@@ -255,4 +255,4 @@ The management API is mounted at `/manage/v1/` and provides:
 | `/manage/v1/reconnect/{name}` | POST | Reconnect a specific backend |
 | `/manage/v1/shutdown` | POST | Graceful server shutdown |
 
-When `SENTINEL_MGMT_TOKEN` is set, include `Authorization: Bearer <token>` in requests.
+When `ARGUS_MGMT_TOKEN` is set, include `Authorization: Bearer <token>` in requests.

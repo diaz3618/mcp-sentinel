@@ -2,7 +2,7 @@
   "name": "code-search",
   "version": "1.0.0",
   "description": "Search and analyze source code across configured MCP backends",
-  "author": "MCP Sentinel",
+  "author": "Argus MCP",
   "license": "MIT",
   "tools": [
     {
@@ -42,7 +42,7 @@
   ],
   "config": {
     "max_results": 50,
-    "index_path": "/var/lib/mcp-sentinel/code-index"
+    "index_path": "/var/lib/argus-mcp/code-index"
   },
   "dependencies": []
 }

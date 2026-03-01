@@ -1,11 +1,11 @@
-# `mcp-sentinel server`
+# `argus-mcp server`
 
-Start the headless Sentinel gateway server.
+Start the headless Argus gateway server.
 
 ## Usage
 
 ```bash
-mcp-sentinel server [--host HOST] [--port PORT] [--log-level LEVEL] [--config PATH]
+argus-mcp server [--host HOST] [--port PORT] [--log-level LEVEL] [--config PATH]
 ```
 
 ## Options
@@ -22,7 +22,7 @@ mcp-sentinel server [--host HOST] [--port PORT] [--log-level LEVEL] [--config PA
 The server resolves the config file using this priority:
 
 1. **`--config` flag** — explicit path (highest priority)
-2. **`SENTINEL_CONFIG` environment variable** — path from env
+2. **`ARGUS_CONFIG` environment variable** — path from env
 3. **Auto-detection** — scans the project directory for:
    - `config.yaml`
    - `config.yml`
@@ -33,20 +33,20 @@ The first file found is used. If none exist, the server exits with an error.
 
 ```bash
 # Start with defaults (localhost:9000, auto-detect config)
-mcp-sentinel server
+argus-mcp server
 
 # Custom host and port
-mcp-sentinel server --host 0.0.0.0 --port 8080
+argus-mcp server --host 0.0.0.0 --port 8080
 
 # Explicit config file
-mcp-sentinel server --config /etc/mcp-sentinel/production.yaml
+argus-mcp server --config /etc/argus-mcp/production.yaml
 
 # Debug logging
-mcp-sentinel server --log-level debug
+argus-mcp server --log-level debug
 
 # Using environment variable
-export SENTINEL_CONFIG=/path/to/config.yaml
-mcp-sentinel server
+export ARGUS_CONFIG=/path/to/config.yaml
+argus-mcp server
 ```
 
 ## Server Endpoints
@@ -68,12 +68,12 @@ To protect the management API, set a bearer token:
 # In config.yaml
 server:
   management:
-    token: "${SENTINEL_MGMT_TOKEN}"
+    token: "${ARGUS_MGMT_TOKEN}"
 ```
 
 ```bash
-export SENTINEL_MGMT_TOKEN=my-secret-token
-mcp-sentinel server
+export ARGUS_MGMT_TOKEN=my-secret-token
+argus-mcp server
 ```
 
 The `/manage/v1/health` endpoint is always public (no token required).

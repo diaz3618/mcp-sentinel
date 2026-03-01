@@ -10,12 +10,12 @@ LLM tool selection when a server exposes hundreds or thousands of tools.
 
 | Component | File | Status |
 |---|---|---|
-| `OptimizerConfig` | `mcp_sentinel/config/schema.py` | **Implemented** — `enabled: bool`, `keep_tools: List[str]` |
-| `ToolIndex` (TF-IDF + fallback) | `mcp_sentinel/bridge/optimizer/search.py` | **Implemented** — scikit-learn TF-IDF cosine similarity with word-overlap fallback |
-| Meta-tool definitions | `mcp_sentinel/bridge/optimizer/meta_tools.py` | **Implemented** — `find_tool` and `call_tool` MCP Tool definitions |
-| Server wiring | `mcp_sentinel/server/lifespan.py` | **Implemented** — reads config, builds ToolIndex, attaches to mcp_server |
-| Handler integration | `mcp_sentinel/server/handlers.py` | **Implemented** — `list_tools` returns meta-tools + keep-list; `call_tool` dispatches to real backend |
-| TUI panel | `mcp_sentinel/tui/widgets/optimizer_panel.py` | **Partially wired** — status display and test search work, but test search uses naive substring matching instead of the real ToolIndex |
+| `OptimizerConfig` | `argus_mcp/config/schema.py` | **Implemented** — `enabled: bool`, `keep_tools: List[str]` |
+| `ToolIndex` (TF-IDF + fallback) | `argus_mcp/bridge/optimizer/search.py` | **Implemented** — scikit-learn TF-IDF cosine similarity with word-overlap fallback |
+| Meta-tool definitions | `argus_mcp/bridge/optimizer/meta_tools.py` | **Implemented** — `find_tool` and `call_tool` MCP Tool definitions |
+| Server wiring | `argus_mcp/server/lifespan.py` | **Implemented** — reads config, builds ToolIndex, attaches to mcp_server |
+| Handler integration | `argus_mcp/server/handlers.py` | **Implemented** — `list_tools` returns meta-tools + keep-list; `call_tool` dispatches to real backend |
+| TUI panel | `argus_mcp/tui/widgets/optimizer_panel.py` | **Partially wired** — status display and test search work, but test search uses naive substring matching instead of the real ToolIndex |
 
 **Summary**: The Optimizer is the most complete feature.  The only gaps are
 TUI test search using the real index and populating the token savings display
@@ -50,9 +50,9 @@ The LLM workflow becomes:
 
 ```
 1. LLM calls find_tool("send email", limit=3)
-2. MCP Sentinel searches the ToolIndex, returns top 3 matches
+2. Argus MCP searches the ToolIndex, returns top 3 matches
 3. LLM picks the best match, calls call_tool("gmail.send", {to: ..., body: ...})
-4. MCP Sentinel dispatches to the real backend
+4. Argus MCP dispatches to the real backend
 ```
 
 ### Token Savings

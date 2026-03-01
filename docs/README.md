@@ -1,6 +1,6 @@
-# MCP Sentinel Documentation
+# Argus MCP Documentation
 
-> **MCP Sentinel** is a central gateway and management platform for
+> **Argus MCP** is a central gateway and management platform for
 > [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers.
 > It aggregates capabilities from multiple backends, provides a REST management
 > API, an interactive TUI, and enterprise-grade security features.
@@ -42,9 +42,9 @@ docs/
 │
 ├── cli/
 │   ├── README.md          ← CLI overview
-│   ├── server.md          ← `mcp-sentinel server`
-│   ├── tui.md             ← `mcp-sentinel tui`
-│   └── secret.md          ← `mcp-sentinel secret`
+│   ├── server.md          ← `argus-mcp server`
+│   ├── tui.md             ← `argus-mcp tui`
+│   └── secret.md          ← `argus-mcp secret`
 │
 ├── security/
 │   ├── README.md          ← Security overview
@@ -84,7 +84,7 @@ docs/
 
 | Concept | Description |
 |---------|-------------|
-| **Backend** | An MCP server that Sentinel connects to (stdio, SSE, or streamable-http) |
+| **Backend** | An MCP server that Argus connects to (stdio, SSE, or streamable-http) |
 | **Capability** | A tool, resource, or prompt exposed by a backend |
 | **Bridge** | Internal layer that connects to backends and aggregates capabilities |
 | **Middleware** | Pluggable request pipeline (auth → authz → telemetry → audit → recovery → routing) |

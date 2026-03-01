@@ -11,8 +11,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/diaz3618/mcp-sentinel.git
-cd mcp-sentinel
+git clone https://github.com/diaz3618/argus-mcp.git
+cd argus-mcp
 
 # Install in development mode
 uv pip install -e ".[yaml,dev]"
@@ -35,7 +35,7 @@ pip install -e ".[yaml,dev]"
 
 ### 1. Create a Config File
 
-Sentinel looks for config files in this order:
+Argus looks for config files in this order:
 `config.yaml` → `config.yml`
 
 Copy and edit the example:
@@ -65,24 +65,24 @@ See [Configuration](configuration.md) for the full reference.
 ### 2. Start the Server
 
 ```bash
-mcp-sentinel server
+argus-mcp server
 ```
 
 The server starts on `http://127.0.0.1:9000` by default. Override with flags:
 
 ```bash
-mcp-sentinel server --host 0.0.0.0 --port 8080 --log-level debug
+argus-mcp server --host 0.0.0.0 --port 8080 --log-level debug
 ```
 
 Or point to a specific config file:
 
 ```bash
-mcp-sentinel server --config /path/to/my-config.yaml
+argus-mcp server --config /path/to/my-config.yaml
 ```
 
 ### 3. Connect an MCP Client
 
-Point any MCP-compatible client at one of the Sentinel transport endpoints:
+Point any MCP-compatible client at one of the Argus transport endpoints:
 
 | Transport | URL |
 |-----------|-----|
@@ -94,7 +94,7 @@ Example — Claude Desktop (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "sentinel": {
+    "argus": {
       "url": "http://127.0.0.1:9000/sse"
     }
   }
@@ -106,13 +106,13 @@ Example — Claude Desktop (`claude_desktop_config.json`):
 In a separate terminal, connect the interactive TUI to the running server:
 
 ```bash
-mcp-sentinel tui
+argus-mcp tui
 ```
 
 Or connect to a remote server:
 
 ```bash
-mcp-sentinel tui --server http://192.168.1.100:9000
+argus-mcp tui --server http://192.168.1.100:9000
 ```
 
 ### 5. Use the Management API
@@ -136,14 +136,14 @@ curl -X POST http://127.0.0.1:9000/manage/v1/reload
 If a management token is configured, include the `Authorization` header:
 
 ```bash
-curl -H "Authorization: Bearer $SENTINEL_MGMT_TOKEN" \
+curl -H "Authorization: Bearer $ARGUS_MGMT_TOKEN" \
      http://127.0.0.1:9000/manage/v1/status
 ```
 
 ## Multi-Server TUI
 
-The TUI supports connecting to multiple Sentinel instances. Create a
-servers config file at `~/.config/mcp-sentinel/servers.json`:
+The TUI supports connecting to multiple Argus instances. Create a
+servers config file at `~/.config/argus-mcp/servers.json`:
 
 ```json
 {
@@ -163,7 +163,7 @@ servers config file at `~/.config/mcp-sentinel/servers.json`:
 ```
 
 ```bash
-mcp-sentinel tui --servers-config ~/.config/mcp-sentinel/servers.json
+argus-mcp tui --servers-config ~/.config/argus-mcp/servers.json
 ```
 
 ## What's Next?

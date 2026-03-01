@@ -1,11 +1,11 @@
 # Configuration Reference
 
-MCP Sentinel uses a structured configuration file to define backends,
+Argus MCP uses a structured configuration file to define backends,
 authentication, middleware, and operational settings.
 
 ## File Format
 
-Sentinel uses **YAML** config files. The loader auto-detects the extension.
+Argus uses **YAML** config files. The loader auto-detects the extension.
 
 | Extension | Format |
 |-----------|--------|
@@ -13,10 +13,10 @@ Sentinel uses **YAML** config files. The loader auto-detects the extension.
 
 ### Config File Resolution
 
-Sentinel searches for config files in this order:
+Argus searches for config files in this order:
 
 1. `--config` CLI flag (explicit path)
-2. `SENTINEL_CONFIG` environment variable
+2. `ARGUS_CONFIG` environment variable
 3. Auto-detect in project directory: `config.yaml` → `config.yml`
 
 ## Config Structure
@@ -83,7 +83,7 @@ server:
   transport: sse                # "sse" or "streamable-http"
   management:
     enabled: true
-    token: "${SENTINEL_MGMT_TOKEN}"
+    token: "${ARGUS_MGMT_TOKEN}"
 ```
 
 | Field | Type | Default | Description |
@@ -92,7 +92,7 @@ server:
 | `port` | integer | `9000` | Listen port (1–65535) |
 | `transport` | string | `"sse"` | Primary transport: `"sse"` or `"streamable-http"` |
 | `management.enabled` | boolean | `true` | Enable the `/manage/v1/` REST API |
-| `management.token` | string | `null` | Bearer token for management endpoints. Also `SENTINEL_MGMT_TOKEN` env var. If unset, management API has no auth. |
+| `management.token` | string | `null` | Bearer token for management endpoints. Also `ARGUS_MGMT_TOKEN` env var. If unset, management API has no auth. |
 
 > **Note:** Both transports are always available regardless of the `transport`
 > setting. The setting controls which is advertised as primary.
@@ -184,7 +184,7 @@ backends:
     auth:
       type: oauth2
       token_url: "https://auth.example.com/token"
-      client_id: "sentinel"
+      client_id: "argus"
       client_secret: "${OAUTH_SECRET}"
       scopes: ["mcp:read", "mcp:write"]
 ```
@@ -329,14 +329,14 @@ OpenTelemetry integration for distributed tracing and metrics.
 telemetry:
   enabled: false
   otlp_endpoint: "http://localhost:4317"
-  service_name: "mcp-sentinel"
+  service_name: "argus-mcp"
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | boolean | `false` | Enable OpenTelemetry tracing and metrics |
 | `otlp_endpoint` | string | `"http://localhost:4317"` | OTLP collector endpoint (gRPC or HTTP) |
-| `service_name` | string | `"mcp-sentinel"` | Service name reported to the collector |
+| `service_name` | string | `"argus-mcp"` | Service name reported to the collector |
 
 When enabled, a `TelemetryMiddleware` is inserted into the middleware chain
 and spans are exported to the configured OTLP endpoint. Requires the
@@ -378,7 +378,7 @@ incoming_auth:
   type: jwt                              # anonymous | local | jwt | oidc
   jwks_uri: "https://auth.example.com/.well-known/jwks.json"
   issuer: "https://auth.example.com"
-  audience: "mcp-sentinel"
+  audience: "argus-mcp"
   algorithms: ["RS256", "ES256"]
 ```
 
@@ -443,7 +443,7 @@ See [Authorization](security/authorization.md) for details.
 ## `registries`
 
 External registry endpoints for server discovery. Each entry defines a
-registry that the Sentinel can query for available MCP servers.
+registry that the Argus can query for available MCP servers.
 
 ```yaml
 registries:
@@ -473,20 +473,20 @@ registries:
 ## `client`
 
 TUI client configuration. These settings control how the TUI connects to
-the Sentinel server and its display preferences.
+the Argus server and its display preferences.
 
 ```yaml
 client:
   server_url: "http://127.0.0.1:9000"
-  token: "${SENTINEL_CLIENT_TOKEN}"
+  token: "${ARGUS_CLIENT_TOKEN}"
   theme: "textual-dark"
   poll_interval: 2.0
-  servers_config: "~/.config/mcp-sentinel/servers.json"
+  servers_config: "~/.config/argus-mcp/servers.json"
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `server_url` | string | `"http://127.0.0.1:9000"` | URL of the Sentinel server to connect to |
+| `server_url` | string | `"http://127.0.0.1:9000"` | URL of the Argus server to connect to |
 | `token` | string | — | Authentication token (optional, supports `${ENV_VAR}`) |
 | `theme` | string | `"textual-dark"` | Textual theme name for the TUI |
 | `poll_interval` | float | `2.0` | Polling interval in seconds (range: 0.5–60.0) |

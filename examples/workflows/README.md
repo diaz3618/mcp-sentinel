@@ -1,7 +1,7 @@
 # Example Workflows
 
 Workflow definitions use a YAML-based DAG format consumed by
-`mcp_sentinel.workflows.dsl.parse_workflow`.  Each YAML file describes
+`argus_mcp.workflows.dsl.parse_workflow`.  Each YAML file describes
 a pipeline of **steps** that reference MCP tools and can express
 dependencies, conditions, retry logic, and error strategies.
 
@@ -36,7 +36,7 @@ output: <template>        # Final workflow output template
 ## Loading a Workflow
 
 ```python
-from mcp_sentinel.workflows.dsl import load_workflow_yaml
+from argus_mcp.workflows.dsl import load_workflow_yaml
 
 wf = load_workflow_yaml("examples/workflows/data-pipeline.yaml")
 for level in wf.topological_order():

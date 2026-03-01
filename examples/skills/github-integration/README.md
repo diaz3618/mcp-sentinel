@@ -1,7 +1,7 @@
 # GitHub Integration Skill
 
 Triage issues, summarise pull requests, and automate common GitHub
-workflows through MCP Sentinel.
+workflows through Argus MCP.
 
 ## Tools
 
@@ -42,7 +42,7 @@ list_pull_requests ──▶ summarise_pr
 ## Usage
 
 ```python
-from mcp_sentinel.skills.manager import SkillManager
+from argus_mcp.skills.manager import SkillManager
 
 mgr = SkillManager("./examples/skills")
 skill = mgr.load("github-integration")

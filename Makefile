@@ -1,11 +1,11 @@
 # ──────────────────────────────────────────────────────────────
-# MCP Sentinel — Project Makefile
+# Argus MCP — Project Makefile
 # ──────────────────────────────────────────────────────────────
 #
 # Targets:
 #   Testing & Quality    test, lint, typecheck, security, quality
 #   Docker               docker-build, docker-push, ghcr-push
-#   Release              release-dry, release, changelog
+#   Release              version, release-dry, release, tag, tag-push, publish
 #   Utilities             clean, dev-install
 #
 # Prerequisites:
@@ -21,8 +21,8 @@ export
 
 # ── Project metadata (read from pyproject.toml) ─────────────
 VERSION := $(shell python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" 2>/dev/null || echo "0.0.0")
-IMAGE_DOCKERHUB := diaz3618/mcp-sentinel
-IMAGE_GHCR      := ghcr.io/diaz3618/mcp-sentinel
+IMAGE_DOCKERHUB := diaz3618/argus-mcp
+IMAGE_GHCR      := ghcr.io/diaz3618/argus-mcp
 PLATFORMS        := linux/amd64,linux/arm64
 
 # ── Semgrep rule packs tailored to this project ─────────────
@@ -44,15 +44,15 @@ test: ## Run pytest suite
 
 .PHONY: lint
 lint: ## Run ruff linter
-	uv run ruff check mcp_sentinel/ tests/
+	uv run ruff check argus_mcp/ tests/
 
 .PHONY: typecheck
 typecheck: ## Run mypy type checker
-	uv run mypy mcp_sentinel/
+	uv run mypy argus_mcp/
 
 .PHONY: semgrep
 semgrep: ## Run semgrep (custom + registry rules)
-	semgrep scan --config .semgrep.yml $(addprefix --config ,$(SEMGREP_PACKS)) mcp_sentinel/
+	semgrep scan --config .semgrep.yml $(addprefix --config ,$(SEMGREP_PACKS)) argus_mcp/
 
 .PHONY: snyk
 snyk: ## Run Snyk code scan (SAST)
@@ -110,6 +110,22 @@ ghcr-push: ## Build multi-arch and push to GHCR
 # ══════════════════════════════════════════════════════════════
 # Release — Versioning & Changelog (python-semantic-release)
 # ══════════════════════════════════════════════════════════════
+#
+# Release flow:
+#   make release → PSR bumps version, stamps files, commits, tags, pushes
+#     Tag push triggers CI cascade:
+#       release.yml  → GitHub Release  → publish.yml → PyPI (OIDC)
+#       docker.yml   → Docker Hub + GHCR (single build, multi-registry)
+#
+# Version sources (all kept in sync by PSR):
+#   pyproject.toml:project.version    — package metadata (single source of truth)
+#   argus_mcp/constants.py            — runtime constant
+#   git tag (v{version})              — Docker image tags via metadata-action
+#
+
+.PHONY: version
+version: ## Show current project version
+	@echo "$(VERSION)"
 
 .PHONY: changelog
 changelog: ## Generate/update CHANGELOG.md from commit history
@@ -126,8 +142,18 @@ release: quality ## Cut a release (bump version, tag, changelog, push)
 	semantic-release version
 	@echo "Release complete. Version: $$(semantic-release version --print-last-released)"
 
+.PHONY: tag
+tag: ## Create a git tag for current version (no push)
+	git tag -a "v$(VERSION)" -m "release: v$(VERSION)"
+	@echo "Created tag v$(VERSION). Push with: make tag-push"
+
+.PHONY: tag-push
+tag-push: ## Push the current version tag (triggers CI release cascade)
+	git push origin "v$(VERSION)"
+	@echo "Pushed v$(VERSION) — CI will create release, publish to PyPI, Docker Hub, and GHCR"
+
 .PHONY: publish
-publish: release docker-push ghcr-push ## Full release + publish to both registries
+publish: release docker-push ghcr-push ## Full release + publish to both registries (manual)
 
 # ══════════════════════════════════════════════════════════════
 # Utilities
@@ -139,7 +165,7 @@ dev-install: ## Install project + dev dependencies via uv
 
 .PHONY: clean
 clean: ## Remove build artifacts and caches
-	rm -rf build/ dist/ *.egg-info mcp_sentinel.egg-info/
+	rm -rf build/ dist/ *.egg-info argus_mcp.egg-info/
 	find . -type d -name __pycache__ -not -path './.venv/*' -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -not -path './.venv/*' -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .ruff_cache -not -path './.venv/*' -exec rm -rf {} + 2>/dev/null || true

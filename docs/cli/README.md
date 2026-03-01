@@ -1,33 +1,33 @@
 # CLI Reference
 
-MCP Sentinel provides three subcommands:
+Argus MCP provides three subcommands:
 
 | Command | Description |
 |---------|-------------|
-| [`mcp-sentinel server`](server.md) | Run the headless gateway server |
-| [`mcp-sentinel tui`](tui.md) | Launch the interactive terminal UI |
-| [`mcp-sentinel secret`](secret.md) | Manage encrypted secrets |
+| [`argus-mcp server`](server.md) | Run the headless gateway server |
+| [`argus-mcp tui`](tui.md) | Launch the interactive terminal UI |
+| [`argus-mcp secret`](secret.md) | Manage encrypted secrets |
 
 ## Usage
 
 ```
-mcp-sentinel [-h] {server,tui,secret} ...
+argus-mcp [-h] {server,tui,secret} ...
 ```
 
 ## Global Help
 
 ```bash
-mcp-sentinel --help
-mcp-sentinel server --help
-mcp-sentinel tui --help
-mcp-sentinel secret --help
+argus-mcp --help
+argus-mcp server --help
+argus-mcp tui --help
+argus-mcp secret --help
 ```
 
 ## Entry Point
 
-The CLI is installed as the `mcp-sentinel` console script (defined in
+The CLI is installed as the `argus-mcp` console script (defined in
 `pyproject.toml`). It can also be invoked as a Python module:
 
 ```bash
-python -m mcp_sentinel server
+python -m argus_mcp server
 ```

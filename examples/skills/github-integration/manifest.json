@@ -2,7 +2,7 @@
   "name": "github-integration",
   "version": "1.0.0",
   "description": "Triage issues, summarise pull requests, and automate GitHub workflows",
-  "author": "MCP Sentinel",
+  "author": "Argus MCP",
   "license": "MIT",
   "tools": [
     {

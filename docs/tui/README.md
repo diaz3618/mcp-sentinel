@@ -1,27 +1,27 @@
 # TUI Guide
 
-MCP Sentinel includes an interactive terminal UI built with
+Argus MCP includes an interactive terminal UI built with
 [Textual](https://textual.textualize.io/). The TUI connects to a running
-Sentinel server via the management API and provides real-time monitoring,
+Argus server via the management API and provides real-time monitoring,
 capability browsing, and server control.
 
 ## Launching
 
 ```bash
 # Connect to local server (default: http://127.0.0.1:9000)
-mcp-sentinel tui
+argus-mcp tui
 
 # Connect to remote server
-mcp-sentinel tui --server http://192.168.1.100:9000
+argus-mcp tui --server http://192.168.1.100:9000
 
 # With authentication
-mcp-sentinel tui --token my-management-token
+argus-mcp tui --token my-management-token
 
 # Multi-server mode
-mcp-sentinel tui --servers-config ~/.config/mcp-sentinel/servers.json
+argus-mcp tui --servers-config ~/.config/argus-mcp/servers.json
 ```
 
-See [`mcp-sentinel tui`](../cli/tui.md) for all CLI options.
+See [`argus-mcp tui`](../cli/tui.md) for all CLI options.
 
 ## Screens
 
@@ -29,7 +29,7 @@ The TUI has ten modes, accessible via keybindings or the command palette.
 
 ### Dashboard (key: `1` or `d`)
 
-The default screen showing an overview of the Sentinel instance:
+The default screen showing an overview of the Argus instance:
 
 - **Server Info** — Name, version, uptime, transport URLs
 - **Backend Status** — Connection state and health for each backend, color-coded
@@ -170,7 +170,7 @@ The TUI polls the management API every 2 seconds to refresh:
 ## Multi-Server Mode
 
 With a `servers.json` config, the TUI shows a server selector widget allowing
-you to switch between multiple Sentinel instances:
+you to switch between multiple Argus instances:
 
 ```json
 {

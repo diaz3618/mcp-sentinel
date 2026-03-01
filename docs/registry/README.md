@@ -9,7 +9,7 @@ registry client).
 ## Quick start
 
 1. Add at least one registry to your `config.yaml` (see [Configuring registries](#configuring-registries)).
-2. Launch the TUI: `mcp-sentinel tui`
+2. Launch the TUI: `argus-mcp tui`
 3. Press the key binding for **Registry** mode (shown in the footer).
 4. The browser fetches the server list from your configured registries.
 5. Use the search box to filter by name or description.
@@ -39,7 +39,7 @@ registry client).
          │                           │
          ▼                           ▼
   RegistryClient ──────────── RegistryCache
-    (httpx)          miss?     (~/.cache/mcp-sentinel/registry/)
+    (httpx)          miss?     (~/.cache/argus-mcp/registry/)
          │
          ▼
   Registry API  (GET /v0/servers)
@@ -50,14 +50,14 @@ registry client).
 
 | Module | Purpose |
 |--------|---------|
-| `mcp_sentinel/registry/client.py` | Async HTTP client (`httpx`) hitting the registry API |
-| `mcp_sentinel/registry/models.py` | `ServerEntry`, `ToolDefinition`, `ServerPage` dataclasses |
-| `mcp_sentinel/registry/cache.py` | File-backed JSON cache (`~/.cache/mcp-sentinel/registry/`, 300 s TTL) |
-| `mcp_sentinel/config/schema_registry.py` | `RegistryEntryConfig` Pydantic model |
-| `mcp_sentinel/tui/screens/registry.py` | TUI screen: wires browser + install panel |
-| `mcp_sentinel/tui/widgets/registry_browser.py` | Searchable `DataTable` of servers |
-| `mcp_sentinel/tui/widgets/install_panel.py` | Right-side detail + install button |
-| `mcp_sentinel/tui/screens/server_detail.py` | Full-screen modal for detailed tool listing |
+| `argus_mcp/registry/client.py` | Async HTTP client (`httpx`) hitting the registry API |
+| `argus_mcp/registry/models.py` | `ServerEntry`, `ToolDefinition`, `ServerPage` dataclasses |
+| `argus_mcp/registry/cache.py` | File-backed JSON cache (`~/.cache/argus-mcp/registry/`, 300 s TTL) |
+| `argus_mcp/config/schema_registry.py` | `RegistryEntryConfig` Pydantic model |
+| `argus_mcp/tui/screens/registry.py` | TUI screen: wires browser + install panel |
+| `argus_mcp/tui/widgets/registry_browser.py` | Searchable `DataTable` of servers |
+| `argus_mcp/tui/widgets/install_panel.py` | Right-side detail + install button |
+| `argus_mcp/tui/screens/server_detail.py` | Full-screen modal for detailed tool listing |
 
 ---
 
@@ -189,7 +189,7 @@ ones you want to use in your `config.yaml`.
 When you press **Install** on a registry server:
 
 1. `ServerEntry.to_backend_config()` converts the entry to a backend config
-   dict matching Sentinel's config format:
+   dict matching Argus's config format:
 
    | Transport | Generated config |
    |-----------|-----------------|
@@ -219,7 +219,7 @@ backends:
 
 ## Cache
 
-API responses are cached to `~/.cache/mcp-sentinel/registry/` as JSON files
+API responses are cached to `~/.cache/argus-mcp/registry/` as JSON files
 (one per registry URL). The cache has a **300-second TTL** — after that, the
 next request re-fetches from the API. On network failure, the client
 transparently falls back to the cache.
@@ -227,7 +227,7 @@ transparently falls back to the cache.
 To clear the cache manually:
 
 ```bash
-rm -rf ~/.cache/mcp-sentinel/registry/
+rm -rf ~/.cache/argus-mcp/registry/
 ```
 
 ---

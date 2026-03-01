@@ -1,6 +1,6 @@
 # Middleware Pipeline
 
-MCP Sentinel processes every MCP request through a composable middleware
+Argus MCP processes every MCP request through a composable middleware
 chain. Each middleware wraps the next, forming an onion-style pipeline
 that handles cross-cutting concerns (auth, audit, telemetry, error
 recovery) without coupling them to business logic.
@@ -54,7 +54,7 @@ The `elapsed_ms` property computes wall-clock time since `start_time`.
 
 ### AuthMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.auth`
+**Module:** `argus_mcp.bridge.middleware.auth`
 
 Extracts the bearer token from `ctx.metadata["auth_token"]`, validates it
 via the configured `AuthProviderRegistry`, and injects the resulting
@@ -66,7 +66,7 @@ via the configured `AuthProviderRegistry`, and injects the resulting
 
 ### AuthzMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.authz`
+**Module:** `argus_mcp.bridge.middleware.authz`
 
 Evaluates the authenticated user's roles against RBAC policies using the
 `PolicyEngine`. Resource identifiers follow the format `tool:<capability_name>`.
@@ -77,7 +77,7 @@ Evaluates the authenticated user's roles against RBAC policies using the
 
 ### TelemetryMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.telemetry`
+**Module:** `argus_mcp.bridge.middleware.telemetry`
 
 Creates an OpenTelemetry trace span per request and records request metrics
 (count, duration, error rate) via `record_request()`.
@@ -89,7 +89,7 @@ Creates an OpenTelemetry trace span per request and records request metrics
 
 ### AuditMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.audit`
+**Module:** `argus_mcp.bridge.middleware.audit`
 
 Logs structured audit events for every request (pre and post). When an
 `AuditLogger` is provided, events are written as JSON lines to a dedicated
@@ -101,7 +101,7 @@ audit file. Otherwise falls back to standard Python logging.
 
 ### RecoveryMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.recovery`
+**Module:** `argus_mcp.bridge.middleware.recovery`
 
 Exception safety net that catches any unhandled error and returns a
 structured MCP error response so clients always get a well-formed reply.
@@ -113,7 +113,7 @@ structured MCP error response so clients always get a well-formed reply.
 
 ### RoutingMiddleware
 
-**Module:** `mcp_sentinel.bridge.middleware.routing`
+**Module:** `argus_mcp.bridge.middleware.routing`
 
 The innermost (terminal) middleware. Resolves the capability name to a
 backend server via the `CapabilityRegistry`, then forwards the request
@@ -129,7 +129,7 @@ to the backend's MCP session.
 The chain is built during server startup in the lifespan handler:
 
 ```python
-from mcp_sentinel.bridge.middleware.chain import build_chain
+from argus_mcp.bridge.middleware.chain import build_chain
 
 # Default chain (always active)
 chain = build_chain(
@@ -159,7 +159,7 @@ to proceed down the chain.
 A middleware is any async callable matching the `MCPMiddleware` protocol:
 
 ```python
-from mcp_sentinel.bridge.middleware.chain import MCPHandler, RequestContext
+from argus_mcp.bridge.middleware.chain import MCPHandler, RequestContext
 
 class MyMiddleware:
     async def __call__(self, ctx: RequestContext, next_handler: MCPHandler) -> Any:

@@ -1,6 +1,6 @@
 # Authorization (RBAC)
 
-MCP Sentinel supports Role-Based Access Control (RBAC) for fine-grained
+Argus MCP supports Role-Based Access Control (RBAC) for fine-grained
 permission management. When enabled, every MCP operation is evaluated against
 a set of authorization policies.
 

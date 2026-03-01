@@ -4,10 +4,10 @@
 
 All screens extend a common `BaseScreen` and implement `compose_content()` for
 layout. The TUI uses Textual's mode system — each screen is registered as a
-mode in `SentinelApp`.
+mode in `ArgusApp`.
 
 ```
-SentinelApp
+ArgusApp
 ├── DashboardScreen   (mode: "dashboard",   key: 1/d)
 ├── ToolsScreen       (mode: "tools",        key: 2)
 ├── RegistryScreen    (mode: "registry",     key: 3)

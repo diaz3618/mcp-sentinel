@@ -1,6 +1,6 @@
 # Outgoing Authentication
 
-MCP Sentinel can authenticate to backend MCP servers using static headers or
+Argus MCP can authenticate to backend MCP servers using static headers or
 OAuth 2.0 client credentials. This applies to SSE and Streamable HTTP backends.
 
 ## Static Headers
@@ -34,7 +34,7 @@ backends:
     auth:
       type: oauth2
       token_url: "https://auth.example.com/oauth/token"
-      client_id: "sentinel-client"
+      client_id: "argus-client"
       client_secret: "${OAUTH_CLIENT_SECRET}"
       scopes:
         - mcp:read
@@ -76,5 +76,5 @@ backends:
     type: sse
     url: "http://public-backend:8080/sse"
     headers:
-      X-Request-Source: "sentinel"
+      X-Request-Source: "argus"
 ```

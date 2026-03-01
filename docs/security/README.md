@@ -1,6 +1,6 @@
 # Security
 
-MCP Sentinel provides layered security controls for both incoming client
+Argus MCP provides layered security controls for both incoming client
 connections and outgoing backend connections.
 
 ## Security Layers
@@ -39,7 +39,7 @@ Backend MCP Server
 | Feature | Default | Production Recommendation |
 |---------|---------|--------------------------|
 | Incoming auth | `anonymous` | `jwt` or `oidc` |
-| Management API auth | disabled (no token) | Set `SENTINEL_MGMT_TOKEN` |
+| Management API auth | disabled (no token) | Set `ARGUS_MGMT_TOKEN` |
 | RBAC | disabled | Enable with `default_effect: deny` |
 | Audit logging | enabled | Keep enabled |
 | Secret provider | `file` (Fernet) | `file` or `keyring` |

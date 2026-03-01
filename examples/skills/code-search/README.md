@@ -26,12 +26,12 @@ search_code ──▶ find_symbol
 | Key | Default | Description |
 |-----|---------|-------------|
 | `max_results` | 50 | Maximum number of search results to return |
-| `index_path` | `/var/lib/mcp-sentinel/code-index` | Path to the local code index |
+| `index_path` | `/var/lib/argus-mcp/code-index` | Path to the local code index |
 
 ## Usage
 
 ```python
-from mcp_sentinel.skills.manager import SkillManager
+from argus_mcp.skills.manager import SkillManager
 
 mgr = SkillManager("./examples/skills")
 skill = mgr.load("code-search")

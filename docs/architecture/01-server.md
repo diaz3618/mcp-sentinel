@@ -5,7 +5,7 @@ management REST API. It is built on Starlette (ASGI) and served by Uvicorn.
 
 ## ASGI Application
 
-`mcp_sentinel/server/app.py` constructs the Starlette application with these
+`argus_mcp/server/app.py` constructs the Starlette application with these
 routes:
 
 | Route | Method | Purpose |
@@ -40,13 +40,13 @@ The Streamable HTTP transport uses `mcp.server.streamable_http.StreamableHTTPSer
 
 ## Lifecycle
 
-`mcp_sentinel/server/lifespan.py` manages startup and shutdown via Starlette's
+`argus_mcp/server/lifespan.py` manages startup and shutdown via Starlette's
 async context manager pattern:
 
 ### Startup Sequence
 
 1. Determine config path (CLI flag → env var → auto-detect)
-2. Create `SentinelService`
+2. Create `ArgusService`
 3. Call `service.start(config_path)` — connects all backends
 4. Attach bridge components to MCP server:
    - `manager` (ClientManager)
@@ -66,7 +66,7 @@ async context manager pattern:
 
 ## MCP Protocol Handlers
 
-`mcp_sentinel/server/handlers.py` registers handlers on the MCP server instance:
+`argus_mcp/server/handlers.py` registers handlers on the MCP server instance:
 
 | Handler | MCP Method | Behavior |
 |---------|-----------|----------|
@@ -92,7 +92,7 @@ The `call_tool` handler detects these meta-tool names and delegates to the
 
 ## Session Management
 
-`mcp_sentinel/server/session/` tracks active client connections:
+`argus_mcp/server/session/` tracks active client connections:
 
 - **`SessionManager`** — Creates, tracks, and expires sessions
 - **`SessionInfo`** — Per-session state: transport type, tool usage, capability

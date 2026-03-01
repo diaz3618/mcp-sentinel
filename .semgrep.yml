@@ -1,4 +1,4 @@
-# Local deterministic Semgrep rules for MCP Sentinel.
+# Local deterministic Semgrep rules for Argus MCP.
 #
 # This file intentionally contains only project-specific custom rules.
 # To combine tested Semgrep registry packs with these rules, run:
@@ -22,7 +22,7 @@ rules:
     severity: ERROR
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: security
       technology: [python, agent-runtime]
@@ -44,7 +44,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: security
       technology: [python, agent-runtime]
@@ -65,7 +65,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: security
       technology: [python, agent-runtime]
@@ -102,7 +102,7 @@ rules:
     severity: ERROR
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: security
       technology: [python, pyyaml]
@@ -130,7 +130,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: security
       technology: [python, deserialization]
@@ -143,27 +143,27 @@ rules:
     message: >
       Server/bridge/runtime/config layers must not import TUI modules.
       The architecture docs define TUI as a separate client over HTTP management APIs.
-      Move shared contracts to neutral modules instead of importing `mcp_sentinel.tui.*`.
+      Move shared contracts to neutral modules instead of importing `argus_mcp.tui.*`.
     languages: [python]
     severity: ERROR
     paths:
       include:
-        - /mcp_sentinel/server/**/*.py
-        - /mcp_sentinel/bridge/**/*.py
-        - /mcp_sentinel/runtime/**/*.py
-        - /mcp_sentinel/config/**/*.py
-        - /mcp_sentinel/registry/**/*.py
-        - /mcp_sentinel/secrets/**/*.py
-        - /mcp_sentinel/audit/**/*.py
-        - /mcp_sentinel/workflows/**/*.py
+        - /argus_mcp/server/**/*.py
+        - /argus_mcp/bridge/**/*.py
+        - /argus_mcp/runtime/**/*.py
+        - /argus_mcp/config/**/*.py
+        - /argus_mcp/registry/**/*.py
+        - /argus_mcp/secrets/**/*.py
+        - /argus_mcp/audit/**/*.py
+        - /argus_mcp/workflows/**/*.py
     pattern-either:
-      - pattern: import mcp_sentinel.tui
-      - pattern: import mcp_sentinel.tui.$MOD
-      - pattern: from mcp_sentinel.tui import $X
-      - pattern: from mcp_sentinel.tui.$MOD import $X
+      - pattern: import argus_mcp.tui
+      - pattern: import argus_mcp.tui.$MOD
+      - pattern: from argus_mcp.tui import $X
+      - pattern: from argus_mcp.tui.$MOD import $X
     metadata:
       category: architecture
-      technology: [python, mcp-sentinel]
+      technology: [python, argus-mcp]
       references:
         - docs/architecture/00-overview.md
         - docs/architecture/01-server.md
@@ -177,23 +177,23 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/tui/**/*.py
+        - /argus_mcp/tui/**/*.py
     pattern-either:
-      - pattern: import mcp_sentinel.server.auth
-      - pattern: import mcp_sentinel.server.auth.$MOD
-      - pattern: from mcp_sentinel.server.auth import $X
-      - pattern: from mcp_sentinel.server.auth.$MOD import $X
-      - pattern: import mcp_sentinel.server.authz
-      - pattern: import mcp_sentinel.server.authz.$MOD
-      - pattern: from mcp_sentinel.server.authz import $X
-      - pattern: from mcp_sentinel.server.authz.$MOD import $X
-      - pattern: import mcp_sentinel.server.session
-      - pattern: import mcp_sentinel.server.session.$MOD
-      - pattern: from mcp_sentinel.server.session import $X
-      - pattern: from mcp_sentinel.server.session.$MOD import $X
+      - pattern: import argus_mcp.server.auth
+      - pattern: import argus_mcp.server.auth.$MOD
+      - pattern: from argus_mcp.server.auth import $X
+      - pattern: from argus_mcp.server.auth.$MOD import $X
+      - pattern: import argus_mcp.server.authz
+      - pattern: import argus_mcp.server.authz.$MOD
+      - pattern: from argus_mcp.server.authz import $X
+      - pattern: from argus_mcp.server.authz.$MOD import $X
+      - pattern: import argus_mcp.server.session
+      - pattern: import argus_mcp.server.session.$MOD
+      - pattern: from argus_mcp.server.session import $X
+      - pattern: from argus_mcp.server.session.$MOD import $X
     metadata:
       category: architecture
-      technology: [python, mcp-sentinel]
+      technology: [python, argus-mcp]
       references:
         - docs/architecture/00-overview.md
         - docs/security/README.md
@@ -207,15 +207,15 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/server/**/*.py
-        - /mcp_sentinel/runtime/**/*.py
-        - /mcp_sentinel/tui/**/*.py
+        - /argus_mcp/server/**/*.py
+        - /argus_mcp/runtime/**/*.py
+        - /argus_mcp/tui/**/*.py
     pattern-either:
-      - pattern: import mcp_sentinel.bridge.forwarder
-      - pattern: from mcp_sentinel.bridge.forwarder import $X
+      - pattern: import argus_mcp.bridge.forwarder
+      - pattern: from argus_mcp.bridge.forwarder import $X
     metadata:
       category: architecture
-      technology: [python, mcp-sentinel]
+      technology: [python, argus-mcp]
       references:
         - docs/architecture/02-bridge.md
         - docs/middleware.md
@@ -305,7 +305,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
         - /tests/**/*.py
     metadata:
       category: reliability
@@ -346,7 +346,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: maintainability
       technology: [python, logging]
@@ -406,7 +406,7 @@ rules:
     severity: WARNING
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
     metadata:
       category: dependency
       technology: [python, importlib]
@@ -429,7 +429,7 @@ rules:
     severity: ERROR
     paths:
       include:
-        - /mcp_sentinel/**/*.py
+        - /argus_mcp/**/*.py
         - /mods/**/*.py
     metadata:
       category: dependency

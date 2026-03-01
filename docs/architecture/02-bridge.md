@@ -1,11 +1,11 @@
 # Bridge: Routing, Registry & Forwarding
 
-The bridge layer connects Sentinel to backend MCP servers, discovers their
+The bridge layer connects Argus to backend MCP servers, discovers their
 capabilities, and routes incoming requests to the correct backend.
 
 ## ClientManager
 
-`mcp_sentinel/bridge/client_manager.py` manages the lifecycle of backend
+`argus_mcp/bridge/client_manager.py` manages the lifecycle of backend
 connections.
 
 **Responsibilities:**
@@ -34,7 +34,7 @@ Pending → Initializing → Ready → Degraded → Failed
 
 ## CapabilityRegistry
 
-`mcp_sentinel/bridge/capability_registry.py` aggregates capabilities from all
+`argus_mcp/bridge/capability_registry.py` aggregates capabilities from all
 connected backends.
 
 **Process:**
@@ -58,7 +58,7 @@ connected backends.
 
 ## Conflict Resolution
 
-`mcp_sentinel/bridge/conflict.py` handles duplicate capability names across
+`argus_mcp/bridge/conflict.py` handles duplicate capability names across
 backends.
 
 | Strategy | Behavior |
@@ -70,7 +70,7 @@ backends.
 
 ## Capability Filtering
 
-`mcp_sentinel/bridge/filter.py` applies per-backend glob pattern filters:
+`argus_mcp/bridge/filter.py` applies per-backend glob pattern filters:
 
 ```yaml
 filters:
@@ -85,7 +85,7 @@ filters:
 
 ## Tool Renaming
 
-`mcp_sentinel/bridge/rename.py` applies per-backend tool overrides:
+`argus_mcp/bridge/rename.py` applies per-backend tool overrides:
 
 ```yaml
 tool_overrides:
@@ -98,7 +98,7 @@ The original name is preserved in the route map for forwarding.
 
 ## Server Groups
 
-`mcp_sentinel/bridge/groups.py` — `GroupManager` organizes backends into logical
+`argus_mcp/bridge/groups.py` — `GroupManager` organizes backends into logical
 groups:
 
 ```yaml
@@ -117,7 +117,7 @@ Groups are queryable via `GET /manage/v1/groups?group=search-tools`.
 
 ## Request Forwarding
 
-`mcp_sentinel/bridge/forwarder.py` is the legacy forwarding path. The modern
+`argus_mcp/bridge/forwarder.py` is the legacy forwarding path. The modern
 path uses the middleware chain's `RoutingMiddleware` which:
 
 1. Looks up the capability in the route map
@@ -128,7 +128,7 @@ path uses the middleware chain's `RoutingMiddleware` which:
 
 ## Health Checking
 
-`mcp_sentinel/bridge/health/` monitors backend health:
+`argus_mcp/bridge/health/` monitors backend health:
 
 - Periodic health probes to each backend
 - Maps health results to backend lifecycle phases
@@ -137,7 +137,7 @@ path uses the middleware chain's `RoutingMiddleware` which:
 
 ## Tool Optimizer
 
-`mcp_sentinel/bridge/optimizer/` implements the `ToolIndex`:
+`argus_mcp/bridge/optimizer/` implements the `ToolIndex`:
 
 When large numbers of tools overwhelm LLM context windows, the optimizer
 replaces the full catalog with two meta-tools:
@@ -150,10 +150,10 @@ scoring for search relevance.
 
 ## Elicitation
 
-`mcp_sentinel/bridge/elicitation.py` supports the MCP elicitation protocol,
+`argus_mcp/bridge/elicitation.py` supports the MCP elicitation protocol,
 allowing backends to request additional input from users during tool execution.
 
 ## Version Checking
 
-`mcp_sentinel/bridge/version_checker.py` detects version drift between
+`argus_mcp/bridge/version_checker.py` detects version drift between
 connected backends and a tool registry, alerting when tool versions fall behind.

@@ -1,6 +1,6 @@
 # Example Skills
 
-This directory contains example skills for MCP Sentinel. Each skill is
+This directory contains example skills for Argus MCP. Each skill is
 a self-contained directory with a `manifest.json` file that defines
 tools, workflows, configuration, and dependencies.
 
@@ -14,8 +14,8 @@ tools, workflows, configuration, and dependencies.
 ## Usage
 
 ```bash
-# Install a skill into MCP Sentinel's skill directory
-from mcp_sentinel.skills.manager import SkillManager
+# Install a skill into Argus MCP's skill directory
+from argus_mcp.skills.manager import SkillManager
 
 manager = SkillManager(skills_dir="skills")
 manager.install("examples/skills/code-search")

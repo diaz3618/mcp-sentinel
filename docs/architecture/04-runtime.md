@@ -1,11 +1,11 @@
 # Service Lifecycle
 
-The `SentinelService` class orchestrates the entire runtime: loading config,
+The `ArgusService` class orchestrates the entire runtime: loading config,
 managing backend connections, and coordinating subsystems.
 
-## SentinelService
+## ArgusService
 
-`mcp_sentinel/runtime/service.py` is the central orchestrator.
+`argus_mcp/runtime/service.py` is the central orchestrator.
 
 ### Startup (`service.start(config_path)`)
 
@@ -53,7 +53,7 @@ from transient failures.
 
 ## Runtime Models
 
-`mcp_sentinel/runtime/models.py` defines status models:
+`argus_mcp/runtime/models.py` defines status models:
 
 ### BackendPhase
 

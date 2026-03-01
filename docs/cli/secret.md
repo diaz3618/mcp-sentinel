@@ -1,4 +1,4 @@
-# `mcp-sentinel secret`
+# `argus-mcp secret`
 
 Manage encrypted secrets used in configuration files. Secrets can be referenced
 in config values using the `secret:<name>` syntax and are resolved at startup.
@@ -6,7 +6,7 @@ in config values using the `secret:<name>` syntax and are resolved at startup.
 ## Usage
 
 ```bash
-mcp-sentinel secret [--provider PROVIDER] [--path PATH] {set,get,list,delete} ...
+argus-mcp secret [--provider PROVIDER] [--path PATH] {set,get,list,delete} ...
 ```
 
 ## Global Options
@@ -22,10 +22,10 @@ mcp-sentinel secret [--provider PROVIDER] [--path PATH] {set,get,list,delete} ..
 
 ```bash
 # Interactive (prompts for value securely)
-mcp-sentinel secret set my-api-key
+argus-mcp secret set my-api-key
 
 # Inline value
-mcp-sentinel secret set my-api-key sk-abc123
+argus-mcp secret set my-api-key sk-abc123
 ```
 
 When no value is provided, the CLI prompts securely (input is hidden) using
@@ -34,7 +34,7 @@ When no value is provided, the CLI prompts securely (input is hidden) using
 ### `get` — Retrieve a Secret
 
 ```bash
-mcp-sentinel secret get my-api-key
+argus-mcp secret get my-api-key
 ```
 
 Prints the decrypted secret value to stdout.
@@ -42,7 +42,7 @@ Prints the decrypted secret value to stdout.
 ### `list` — List Secret Names
 
 ```bash
-mcp-sentinel secret list
+argus-mcp secret list
 ```
 
 Lists all stored secret names (values are not shown).
@@ -50,7 +50,7 @@ Lists all stored secret names (values are not shown).
 ### `delete` — Remove a Secret
 
 ```bash
-mcp-sentinel secret delete my-api-key
+argus-mcp secret delete my-api-key
 ```
 
 ## Providers
@@ -60,7 +60,7 @@ mcp-sentinel secret delete my-api-key
 Stores secrets in a Fernet-encrypted JSON file.
 
 - **File**: `secrets.enc` (or `--path` override)
-- **Master key**: `SENTINEL_SECRET_KEY` environment variable
+- **Master key**: `ARGUS_SECRET_KEY` environment variable
 - **Encryption**: Fernet (AES-128-CBC + HMAC-SHA256)
 - **File permissions**: `0600` (owner read/write only)
 - **Writes**: Atomic (temp file + rename)
@@ -71,10 +71,10 @@ Stores secrets in a Fernet-encrypted JSON file.
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
 # Set the key
-export SENTINEL_SECRET_KEY="your-generated-key"
+export ARGUS_SECRET_KEY="your-generated-key"
 
 # Store a secret
-mcp-sentinel secret set my-api-key
+argus-mcp secret set my-api-key
 ```
 
 ### `env`
@@ -87,19 +87,19 @@ Maps secrets to environment variables.
 
 ```bash
 export SECRET_MY_API_KEY=sk-abc123
-mcp-sentinel secret --provider env get my-api-key
+argus-mcp secret --provider env get my-api-key
 ```
 
 ### `keyring`
 
 Uses the OS keyring (macOS Keychain, GNOME Keyring, Windows Credential Locker).
 
-- **Service name**: `mcp-sentinel`
+- **Service name**: `argus-mcp`
 - **Requires**: `keyring` package
 
 ```bash
-mcp-sentinel secret --provider keyring set my-api-key
-mcp-sentinel secret --provider keyring get my-api-key
+argus-mcp secret --provider keyring set my-api-key
+argus-mcp secret --provider keyring get my-api-key
 ```
 
 ## Using Secrets in Config

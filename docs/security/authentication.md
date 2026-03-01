@@ -1,6 +1,6 @@
 # Authentication
 
-MCP Sentinel supports four incoming authentication modes. The mode is set in the
+Argus MCP supports four incoming authentication modes. The mode is set in the
 `incoming_auth` config section and applies to all MCP client connections.
 
 ## Auth Types
@@ -25,14 +25,14 @@ timing attacks.
 ```yaml
 incoming_auth:
   type: local
-  token: "${SENTINEL_AUTH_TOKEN}"
+  token: "${ARGUS_AUTH_TOKEN}"
 ```
 
 **Use case:** Simple deployments, single-user setups.
 
 ### `jwt`
 
-JWT validation via JWKS (JSON Web Key Set). Sentinel fetches the public keys
+JWT validation via JWKS (JSON Web Key Set). Argus fetches the public keys
 from a JWKS endpoint and validates token signatures, expiry, issuer, and
 audience claims.
 
@@ -41,7 +41,7 @@ incoming_auth:
   type: jwt
   jwks_uri: "https://auth.example.com/.well-known/jwks.json"
   issuer: "https://auth.example.com"
-  audience: "mcp-sentinel"
+  audience: "argus-mcp"
   algorithms: ["RS256", "ES256"]
 ```
 
@@ -63,14 +63,14 @@ incoming_auth:
 
 ### `oidc`
 
-OpenID Connect auto-discovery. Sentinel discovers the JWKS URI automatically
+OpenID Connect auto-discovery. Argus discovers the JWKS URI automatically
 from the issuer's `/.well-known/openid-configuration` endpoint.
 
 ```yaml
 incoming_auth:
   type: oidc
   issuer: "https://auth.example.com"
-  audience: "mcp-sentinel"
+  audience: "argus-mcp"
 ```
 
 This is equivalent to `jwt` mode but automatically constructs the JWKS URI from
@@ -111,7 +111,7 @@ The `AuthMiddleware` sits at the top of the middleware chain:
 The management REST API (`/manage/v1/`) has its own separate auth via
 `BearerAuthMiddleware`:
 
-- Token configured via `server.management.token` or `SENTINEL_MGMT_TOKEN` env var
+- Token configured via `server.management.token` or `ARGUS_MGMT_TOKEN` env var
 - If no token is configured, management API is open (no auth)
 - `GET /manage/v1/health` is always public (no token required)
 

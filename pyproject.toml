@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcp-sentinel"
+name = "argus-mcp"
 version = "0.5.0"
 description = "A central server for aggregating MCP server capabilities via SSE"
 readme = "README.md"
@@ -22,10 +22,10 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["mcp_sentinel*"]
+include = ["argus_mcp*"]
 
 [project.scripts]
-mcp-sentinel = "mcp_sentinel.cli:main"
+argus-mcp = "argus_mcp.cli:main"
 
 [dependency-groups]
 dev = [
@@ -76,7 +76,7 @@ select = ["E4", "E7", "E9", "F", "I"]
 [tool.mypy]
 python_version = "3.10"
 files = [
-    "mcp_sentinel/",
+    "argus_mcp/",
     "mods/*.py",
 ]
 exclude = "(^logs/|^img/|^internal/|^memory-bank/|^\\.venv/|^__pycache__/)"
@@ -88,26 +88,26 @@ ignore_missing_imports = true
 disable_error_code = ["annotation-unchecked"]
 
 [[tool.mypy.overrides]]
-module = ["mcp_sentinel.server.*"]
+module = ["argus_mcp.server.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["mcp_sentinel.bridge.client_manager"]
+module = ["argus_mcp.bridge.client_manager"]
 disable_error_code = ["assignment", "arg-type"]
 
 [[tool.mypy.overrides]]
-module = ["mcp_sentinel.bridge.capability_registry"]
+module = ["argus_mcp.bridge.capability_registry"]
 disable_error_code = ["attr-defined"]
 
 [[tool.mypy.overrides]]
-module = ["mcp_sentinel.tui.*"]
+module = ["argus_mcp.tui.*"]
 ignore_errors = true
 
 # ── python-semantic-release ──────────────────────────────────────────────
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
-version_variables = ["mcp_sentinel/constants.py:SERVER_VERSION"]
+version_variables = ["argus_mcp/constants.py:SERVER_VERSION"]
 commit_message = "release: v{version}"
 tag_format = "v{version}"
 major_on_zero = false

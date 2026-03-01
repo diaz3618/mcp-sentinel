@@ -68,7 +68,7 @@ steps:
 output: "${store.output}"
 ```
 
-### 2. Start MCP Sentinel
+### 2. Start Argus MCP
 
 Workflows are automatically discovered at server startup.  The engine scans:
 

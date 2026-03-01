@@ -11,7 +11,7 @@ Config file (YAML)
     → Expand ${ENV_VAR} references
       → Detect format (legacy or v1)
         → Auto-migrate legacy → v1 if needed
-          → Validate against SentinelConfig (Pydantic)
+          → Validate against ArgusConfig (Pydantic)
             → Resolve secret:name references
               → Ready for use
 ```
@@ -21,7 +21,7 @@ Config file (YAML)
 | Module | Purpose |
 |--------|---------|
 | `config/loader.py` | File I/O, format detection, validation |
-| `config/schema.py` | Pydantic models (SentinelConfig, BackendConfig, etc.) |
+| `config/schema.py` | Pydantic models (ArgusConfig, BackendConfig, etc.) |
 | `config/migration.py` | Legacy flat-dict → v1 migration |
 | `config/diff.py` | Config change detection for hot-reload |
 | `config/flags.py` | Feature flag management |
@@ -31,13 +31,13 @@ Config file (YAML)
 ## Public API
 
 ```python
-from mcp_sentinel.config import load_and_validate_config, load_sentinel_config
+from argus_mcp.config import load_and_validate_config, load_argus_config
 
 # Returns downstream dict format
 backends_dict = load_and_validate_config("config.yaml")
 
 # Returns full Pydantic model
-config = load_sentinel_config("config.yaml")
+config = load_argus_config("config.yaml")
 ```
 
 ## File Format
@@ -53,7 +53,7 @@ another `${VAR}` reference.
 ```yaml
 server:
   management:
-    token: "${SENTINEL_MGMT_TOKEN}"
+    token: "${ARGUS_MGMT_TOKEN}"
 
 backends:
   my-server:
@@ -79,4 +79,4 @@ There is no separate feature flag for the watcher.
 ## Client Config Generation
 
 `config/client_gen.py` generates MCP client configuration files (e.g., for
-Claude Desktop) that point at the Sentinel gateway, simplifying client setup.
+Claude Desktop) that point at the Argus gateway, simplifying client setup.

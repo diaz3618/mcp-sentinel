@@ -4,7 +4,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
-mcp_sentinel.egg-info/
 dist/
 build/
 .mypy_cache/
@@ -31,7 +30,7 @@ mods/
 # ── Logs & runtime artifacts ──
 logs/
 pids/
-.sentinel/
+.argus/
 *.log
 *.pid
 

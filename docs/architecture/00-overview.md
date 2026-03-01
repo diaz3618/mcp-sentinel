@@ -1,6 +1,6 @@
 # Architecture Overview
 
-MCP Sentinel sits between MCP clients (LLMs, IDEs, agents) and multiple backend
+Argus MCP sits between MCP clients (LLMs, IDEs, agents) and multiple backend
 MCP servers. It aggregates capabilities, enforces security policies, and provides
 operational visibility — all through a single connection point.
 
@@ -8,7 +8,7 @@ operational visibility — all through a single connection point.
 
 ```
                      ┌──────────────────────────────────────────┐
-                     │              MCP Sentinel                │
+                     │              Argus MCP                │
                      │                                          │
   MCP Clients        │  ┌─────────┐   ┌───────────────────┐     │
   ─────────────────► │  │Transport│──►│  Middleware Chain │     │
@@ -49,9 +49,9 @@ operational visibility — all through a single connection point.
 ## Package Structure
 
 ```
-mcp_sentinel/
+argus_mcp/
 ├── __init__.py
-├── __main__.py          # python -m mcp_sentinel
+├── __main__.py          # python -m argus_mcp
 ├── cli.py               # Entry point: server, tui, secret subcommands
 ├── constants.py         # Shared constants
 ├── errors.py            # Base exception hierarchy
@@ -91,7 +91,7 @@ mcp_sentinel/
 │   └── optimizer/       # Tool optimizer (meta-tools)
 │
 ├── runtime/             # Service lifecycle
-│   ├── service.py       # SentinelService orchestration
+│   ├── service.py       # ArgusService orchestration
 │   └── models.py        # Runtime status models
 │
 ├── audit/               # Audit logging
@@ -124,12 +124,12 @@ mcp_sentinel/
 │   └── logging_config.py # File logging + secret redaction
 │
 └── tui/                 # Terminal UI (Textual)
-    ├── app.py           # SentinelApp
+    ├── app.py           # ArgusApp
     ├── api_client.py    # HTTP client for management API
     ├── server_manager.py # Multi-server connections
     ├── events.py        # Custom Textual messages
     ├── settings.py      # TUI preferences
-    ├── sentinel.tcss    # Stylesheet
+    ├── argus.tcss    # Stylesheet
     ├── screens/         # Dashboard, Tools, Registry, Settings, ...
     └── widgets/         # Reusable UI components
 ```
@@ -144,7 +144,7 @@ CLI (main)
     → Starlette app_lifespan
       → Load & validate config (JSON/YAML)
       → Resolve secrets (secret:name → values)
-      → Create SentinelService
+      → Create ArgusService
         → ClientManager: connect to all backends
         → CapabilityRegistry: discover & aggregate capabilities
         → Apply conflict resolution, filters, renames
@@ -178,14 +178,14 @@ Client request (list_tools / call_tool / read_resource / get_prompt)
 HTTP request → /manage/v1/{endpoint}
   → BearerAuthMiddleware (token check, /health exempt)
     → Route handler
-      → Read from SentinelService state
+      → Read from ArgusService state
     → JSON response
 ```
 
 ### 4. TUI Polling
 
 ```
-SentinelApp (Textual)
+ArgusApp (Textual)
   → ApiClient polls /manage/v1/ endpoints every 2s
     → Health, Backends, Capabilities, Events
   → Updates widgets with fresh data
@@ -196,7 +196,7 @@ SentinelApp (Textual)
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Single connection point** | Clients connect once; Sentinel routes to N backends |
+| **Single connection point** | Clients connect once; Argus routes to N backends |
 | **Protocol-native** | Speaks MCP natively — no protocol translation |
 | **Transport-agnostic** | Supports stdio, SSE, and Streamable HTTP backends |
 | **Middleware pipeline** | Pluggable chain for cross-cutting concerns |

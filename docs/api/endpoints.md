@@ -48,7 +48,7 @@ Full service status including config and transport info.
 ```json
 {
   "service": {
-    "name": "MCP Sentinel",
+    "name": "Argus MCP",
     "version": "0.1.0",
     "state": "running",
     "uptime_seconds": 3600.5,

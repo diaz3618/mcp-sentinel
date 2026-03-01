@@ -1,6 +1,6 @@
 # Secrets Management
 
-MCP Sentinel provides an encrypted secret store for managing sensitive values
+Argus MCP provides an encrypted secret store for managing sensitive values
 like API keys, tokens, and credentials. Secrets are referenced in config files
 and resolved at startup — they never appear in plaintext in config or logs.
 
@@ -32,7 +32,7 @@ Stores secrets in a Fernet-encrypted JSON file.
 |---------|-------|
 | **File** | `secrets.enc` (configurable via `--path`) |
 | **Encryption** | Fernet (AES-128-CBC + HMAC-SHA256) |
-| **Master key** | `SENTINEL_SECRET_KEY` environment variable |
+| **Master key** | `ARGUS_SECRET_KEY` environment variable |
 | **File permissions** | `0600` (owner read/write only) |
 | **Write strategy** | Atomic (temp file + rename) |
 | **Dependency** | `cryptography` package |
@@ -40,11 +40,11 @@ Stores secrets in a Fernet-encrypted JSON file.
 ```bash
 # Generate a master key
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-export SENTINEL_SECRET_KEY="<generated-key>"
+export ARGUS_SECRET_KEY="<generated-key>"
 
 # Store secrets
-mcp-sentinel secret set my-api-key
-mcp-sentinel secret set db-password
+argus-mcp secret set my-api-key
+argus-mcp secret set db-password
 ```
 
 ### Environment Provider
@@ -72,7 +72,7 @@ Uses the OS-native credential store:
 | Linux | GNOME Keyring / KWallet |
 | Windows | Credential Locker |
 
-Service name: `mcp-sentinel`. Requires the `keyring` package.
+Service name: `argus-mcp`. Requires the `keyring` package.
 
 ## Config Integration
 
@@ -127,12 +127,12 @@ This ensures no plaintext secrets appear in:
 
 ## CLI Reference
 
-See [`mcp-sentinel secret`](../cli/secret.md) for the command-line interface.
+See [`argus-mcp secret`](../cli/secret.md) for the command-line interface.
 
 ## SecretStore API
 
 ```python
-from mcp_sentinel.secrets.store import SecretStore
+from argus_mcp.secrets.store import SecretStore
 
 store = SecretStore(provider_type="file", path="secrets.enc")
 

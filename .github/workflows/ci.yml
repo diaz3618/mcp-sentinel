@@ -38,7 +38,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Run ruff check
-        run: uv run ruff check mcp_sentinel/
+        run: uv run ruff check argus_mcp/
 
       - name: Run ruff check (mods/)
         run: uv run ruff check mods/
@@ -63,7 +63,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Run black --check
-        run: uv run black --check mcp_sentinel/ mods/
+        run: uv run black --check argus_mcp/ mods/
 
   # ──────────────────────────────────────────────
   # Mypy — static type checking

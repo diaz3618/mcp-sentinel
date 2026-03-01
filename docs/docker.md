@@ -1,20 +1,20 @@
 # Docker Usage
 
-MCP Sentinel publishes multi-architecture images (`linux/amd64`, `linux/arm64`) to both Docker Hub and GHCR:
+Argus MCP publishes multi-architecture images (`linux/amd64`, `linux/arm64`) to both Docker Hub and GHCR:
 
 | Registry | Image |
 |----------|-------|
-| Docker Hub | `diaz3618/mcp-sentinel` |
-| GHCR | `ghcr.io/diaz3618/mcp-sentinel` |
+| Docker Hub | `diaz3618/argus-mcp` |
+| GHCR | `ghcr.io/diaz3618/argus-mcp` |
 
 ## Quick Start — Server
 
 ```bash
 docker run -d \
-  --name sentinel \
+  --name argus \
   -p 9000:9000 \
   -v ./config.yaml:/app/config.yaml \
-  diaz3618/mcp-sentinel:latest
+  diaz3618/argus-mcp:latest
 ```
 
 The server listens on `0.0.0.0:9000` by default and exposes:
@@ -27,10 +27,10 @@ The server listens on `0.0.0.0:9000` by default and exposes:
 
 ```bash
 docker run -d \
-  --name sentinel \
+  --name argus \
   -p 8080:8080 \
   -v ./config.yaml:/app/config.yaml \
-  diaz3618/mcp-sentinel:latest \
+  diaz3618/argus-mcp:latest \
   server --host 0.0.0.0 --port 8080
 ```
 
@@ -40,23 +40,23 @@ Pass environment variables referenced in your config with `-e`:
 
 ```bash
 docker run -d \
-  --name sentinel \
+  --name argus \
   -p 9000:9000 \
   -v ./config.yaml:/app/config.yaml \
-  -e SENTINEL_MGMT_TOKEN=my-secret-token \
+  -e ARGUS_MGMT_TOKEN=my-secret-token \
   -e MY_API_KEY=sk-xxx \
-  diaz3618/mcp-sentinel:latest
+  diaz3618/argus-mcp:latest
 ```
 
 Or use an env file:
 
 ```bash
 docker run -d \
-  --name sentinel \
+  --name argus \
   -p 9000:9000 \
   -v ./config.yaml:/app/config.yaml \
   --env-file .env \
-  diaz3618/mcp-sentinel:latest
+  diaz3618/argus-mcp:latest
 ```
 
 ### Logs
@@ -65,11 +65,11 @@ Mount a volume to persist logs outside the container:
 
 ```bash
 docker run -d \
-  --name sentinel \
+  --name argus \
   -p 9000:9000 \
   -v ./config.yaml:/app/config.yaml \
   -v ./logs:/app/logs \
-  diaz3618/mcp-sentinel:latest
+  diaz3618/argus-mcp:latest
 ```
 
 ### Health Check
@@ -77,16 +77,16 @@ docker run -d \
 The image includes a built-in health check against `/manage/v1/health`. Check status with:
 
 ```bash
-docker inspect --format='{{.State.Health.Status}}' sentinel
+docker inspect --format='{{.State.Health.Status}}' argus
 ```
 
 ## TUI (Client)
 
-The TUI is a terminal application that connects to a running Sentinel server over HTTP. It requires a TTY, so use `-it`:
+The TUI is a terminal application that connects to a running Argus server over HTTP. It requires a TTY, so use `-it`:
 
 ```bash
 docker run --rm -it \
-  diaz3618/mcp-sentinel:latest \
+  diaz3618/argus-mcp:latest \
   tui --server http://host.docker.internal:9000
 ```
 
@@ -96,8 +96,8 @@ docker run --rm -it \
 
 ```bash
 docker run --rm -it \
-  diaz3618/mcp-sentinel:latest \
-  tui --server https://sentinel.example.com:9000 --token YOUR_TOKEN
+  diaz3618/argus-mcp:latest \
+  tui --server https://argus.example.com:9000 --token YOUR_TOKEN
 ```
 
 ## Docker Compose
@@ -106,31 +106,31 @@ docker run --rm -it \
 
 ```yaml
 services:
-  sentinel:
-    image: diaz3618/mcp-sentinel:latest
+  argus:
+    image: diaz3618/argus-mcp:latest
     ports:
       - "9000:9000"
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./logs:/app/logs
     environment:
-      SENTINEL_MGMT_TOKEN: "${SENTINEL_MGMT_TOKEN}"
+      ARGUS_MGMT_TOKEN: "${ARGUS_MGMT_TOKEN}"
     restart: unless-stopped
 ```
 
 ## Building Locally
 
 ```bash
-docker build -t mcp-sentinel .
-docker run -p 9000:9000 -v ./config.yaml:/app/config.yaml mcp-sentinel
+docker build -t argus-mcp .
+docker run -p 9000:9000 -v ./config.yaml:/app/config.yaml argus-mcp
 ```
 
 ## Image Details
 
 - **Base:** `python:3.13-slim`
 - **Node.js:** LTS (22.x) included for `npx`-based stdio backends
-- **User:** Runs as non-root `sentinel` user
-- **Entrypoint:** `mcp-sentinel` — pass any subcommand (`server`, `tui`, `secret`) as arguments
+- **User:** Runs as non-root `argus` user
+- **Entrypoint:** `argus-mcp` — pass any subcommand (`server`, `tui`, `secret`) as arguments
 - **Default command:** `server --host 0.0.0.0 --port 9000`
 
 ## Pinning a Version
@@ -138,7 +138,7 @@ docker run -p 9000:9000 -v ./config.yaml:/app/config.yaml mcp-sentinel
 Use a specific tag instead of `latest`:
 
 ```bash
-docker pull diaz3618/mcp-sentinel:0.5.0
+docker pull diaz3618/argus-mcp:0.5.0
 ```
 
 Tags follow the project version and are published on each release.

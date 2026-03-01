@@ -10,11 +10,11 @@ server.  This enables zero-downtime configuration updates.
 
 | Component | File | Status |
 |---|---|---|
-| `ConfigWatcher` | `mcp_sentinel/config/watcher.py` | **Implemented** — poll-based async file watcher with debounce |
-| `SentinelService` integration | `mcp_sentinel/runtime/service.py` | **Implemented** — watcher started after service reaches RUNNING state |
-| `SyncStatusWidget` (TUI) | `mcp_sentinel/tui/widgets/sync_status.py` | **UI only** — renders status line + event log table, but no data flows to it |
-| `SyncConfigPanel` (TUI) | `mcp_sentinel/tui/widgets/sync_status.py` | **UI only** — settings form (interval, detection method, failure mode) with no persistence |
-| Config schema fields | — | **NOT WIRED** — no `sync:` section in `SentinelConfig` |
+| `ConfigWatcher` | `argus_mcp/config/watcher.py` | **Implemented** — poll-based async file watcher with debounce |
+| `ArgusService` integration | `argus_mcp/runtime/service.py` | **Implemented** — watcher started after service reaches RUNNING state |
+| `SyncStatusWidget` (TUI) | `argus_mcp/tui/widgets/sync_status.py` | **UI only** — renders status line + event log table, but no data flows to it |
+| `SyncConfigPanel` (TUI) | `argus_mcp/tui/widgets/sync_status.py` | **UI only** — settings form (interval, detection method, failure mode) with no persistence |
+| Config schema fields | — | **NOT WIRED** — no `sync:` section in `ArgusConfig` |
 
 **Summary**: The backend watcher logic is solid and production-ready.  Two
 gaps remain: configuration schema integration and TUI data binding.
@@ -32,7 +32,7 @@ The `ConfigWatcher` uses `os.stat()` polling with a configurable interval
    saves from editors that perform multiple writes.
 2. After the debounce period, if no further changes are detected, the
    `on_change` async callback fires.
-3. The callback triggers `SentinelService.reload()`, which re-reads the
+3. The callback triggers `ArgusService.reload()`, which re-reads the
    config, reconciles backend connections, and rebuilds the tool catalog.
 
 ```
@@ -70,7 +70,7 @@ recommended for network file systems.  Inotify support would require the
 
 ## What Needs to Be Done
 
-### 1. Add `sync` section to `SentinelConfig`
+### 1. Add `sync` section to `ArgusConfig`
 
 ```python
 class SyncSettings(BaseModel):

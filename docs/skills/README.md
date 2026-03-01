@@ -23,7 +23,7 @@ use-case needs.
 
 Skills are a *packaging layer* on top of backends. Each tool in a skill declares
 which backend it needs (e.g. `"backend": "github"`). When you **Apply** a skill,
-Sentinel writes those backends to `config.yaml` and triggers a hot-reload — no
+Argus writes those backends to `config.yaml` and triggers a hot-reload — no
 restart required.
 
 There is no separate "skill runtime." Applied skill tools are served by the
@@ -136,7 +136,7 @@ See [docs/workflows/](../workflows/) for full workflow documentation.
 
 ### Browse & manage
 
-1. Launch: `mcp-sentinel tui`
+1. Launch: `argus-mcp tui`
 2. Switch to **Skills** mode (key shown in footer, typically `5`)
 3. The screen auto-discovers skills from `./skills/` or `examples/skills/`
 
@@ -162,7 +162,7 @@ See [docs/workflows/](../workflows/) for full workflow documentation.
 ## Using skills programmatically
 
 ```python
-from mcp_sentinel.skills import SkillManager, SkillStatus
+from argus_mcp.skills import SkillManager, SkillStatus
 
 manager = SkillManager(skills_dir="skills")
 
@@ -287,8 +287,8 @@ Two example skills ship with the project in
 
 | Module | Purpose |
 |--------|---------|
-| `mcp_sentinel/skills/__init__.py` | Package exports |
-| `mcp_sentinel/skills/manifest.py` | `SkillManifest` dataclass + JSON parsing/validation |
-| `mcp_sentinel/skills/manager.py` | `SkillManager` lifecycle (discover, install, enable, apply, uninstall) |
-| `mcp_sentinel/tui/screens/skills.py` | TUI Skills screen |
+| `argus_mcp/skills/__init__.py` | Package exports |
+| `argus_mcp/skills/manifest.py` | `SkillManifest` dataclass + JSON parsing/validation |
+| `argus_mcp/skills/manager.py` | `SkillManager` lifecycle (discover, install, enable, apply, uninstall) |
+| `argus_mcp/tui/screens/skills.py` | TUI Skills screen |
 | `examples/skills/` | Example skill packages |

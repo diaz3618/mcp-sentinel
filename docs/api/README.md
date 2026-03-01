@@ -1,6 +1,6 @@
 # Management API
 
-MCP Sentinel exposes a REST API at `/manage/v1/` for monitoring, inspecting,
+Argus MCP exposes a REST API at `/manage/v1/` for monitoring, inspecting,
 and controlling the gateway at runtime.
 
 ## Base URL
@@ -16,13 +16,13 @@ Default: `http://127.0.0.1:9000/manage/v1/`
 The management API uses bearer token authentication:
 
 ```bash
-curl -H "Authorization: Bearer $SENTINEL_MGMT_TOKEN" \
+curl -H "Authorization: Bearer $ARGUS_MGMT_TOKEN" \
      http://localhost:9000/manage/v1/status
 ```
 
 Token configuration:
 - Config: `server.management.token`
-- Env: `SENTINEL_MGMT_TOKEN`
+- Env: `ARGUS_MGMT_TOKEN`
 - If no token is configured, the API is open (no auth)
 - `GET /health` is always public (no token required)
 
